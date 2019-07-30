@@ -96,7 +96,8 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         acc_compute_hist_time = 0.  # time spent computing histograms
         # time spent predicting X for gradient and hessians update
         acc_prediction_time = 0.
-        X, y = check_X_y(X, y, dtype=[X_DTYPE], force_all_finite=False)
+        multi_output = len(np.asarray(y).shape) == 2
+        X, y = check_X_y(X, y, dtype=[X_DTYPE], multi_output=multi_output, force_all_finite=False)
         y = self._encode_y(y)
 
         # The rng state must be preserved if warm_start is True
