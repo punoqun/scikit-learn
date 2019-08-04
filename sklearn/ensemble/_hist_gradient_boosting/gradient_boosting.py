@@ -10,6 +10,7 @@ from ...base import (BaseEstimator, RegressorMixin, ClassifierMixin,
 from ...utils import check_X_y, check_random_state, check_array, resample
 from ...utils.validation import check_is_fitted
 from ...utils.multiclass import check_classification_targets
+from ...random_projection import SparseRandomProjection
 from ...metrics import check_scoring
 from ...model_selection import train_test_split
 from ...preprocessing import LabelEncoder
@@ -98,6 +99,11 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         acc_prediction_time = 0.
         multi_output = len(np.asarray(y).shape) == 2
         X, y = check_X_y(X, y, dtype=[X_DTYPE], multi_output=multi_output, force_all_finite=False)
+        if multi_output:
+            non_pca = y
+            y = SparseRandomProjection(n_components=1,
+                                       random_state=np.random.RandomState(42)).fit_transform(X=y)
+            y = np.ndarray.flatten(y)
         y = self._encode_y(y)
 
         # The rng state must be preserved if warm_start is True
@@ -302,7 +308,17 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                     l2_regularization=self.l2_regularization,
                     shrinkage=self.learning_rate)
                 grower.grow()
-
+                print(np.asarray(grower.histogram_builder.gradients))
+                print(np.asarray(grower.histogram_builder.hessians))
+                # print(np.asarray(grower.histogram_builder.X_binned))
+                # for leaf in grower.finalized_leaves:
+                    # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
+                    # print(X[:,leaf.parent.split_info.feature_idx])
+                    # print('leaf value:' + str(leaf.value))           #prediction value
+                    # print('leaf samples:' + str(list(leaf.gradients)))
+                    # print('y : ' + str(np.mean(leaf.parent.split_info.gain)))
+                    # print('node value : ' + str(leaf.parent.split_info.n_samples_left + leaf.parent.split_info.n_samples_right))
+                    # print('Grower info: ' + str(leaf.parent.split_info.best_split_info))
                 acc_apply_split_time += grower.total_apply_split_time
                 acc_find_split_time += grower.total_find_split_time
                 acc_compute_hist_time += grower.total_compute_hist_time
