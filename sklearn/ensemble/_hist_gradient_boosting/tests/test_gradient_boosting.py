@@ -11,7 +11,7 @@ from sklearn.utils import shuffle
 
 
 X_classification, y_classification = make_classification(random_state=0)
-X_regression, y_regression = make_regression(random_state=0)
+X_regression, y_regression = make_regression(n_samples=1000,random_state=0, n_targets=1)
 
 
 @pytest.mark.parametrize('GradientBoosting, X, y', [
@@ -67,7 +67,7 @@ def test_early_stopping_regression(scoring, validation_fraction,
 
     max_iter = 200
 
-    X, y = make_regression(n_samples=50, random_state=0)
+    X, y = make_regression(n_samples=50, random_state=0, n_targets=2)
 
     gb = HistGradientBoostingRegressor(
         verbose=1,  # just for coverage
