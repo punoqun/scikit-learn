@@ -99,11 +99,12 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         acc_prediction_time = 0.
         multi_output = len(np.asarray(y).shape) == 2
         X, y = check_X_y(X, y, dtype=[X_DTYPE], multi_output=multi_output, force_all_finite=False)
+        non_srp = y
         if multi_output:
-            non_pca = y
             y = SparseRandomProjection(n_components=1,
                                        random_state=np.random.RandomState(42)).fit_transform(X=y)
             y = np.ndarray.flatten(y)
+            self.n_trees_per_iteration = non_srp.shape[1]
         y = self._encode_y(y)
 
         # The rng state must be preserved if warm_start is True
@@ -184,10 +185,17 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
 
             # initialize gradients and hessians (empty arrays).
             # shape = (n_trees_per_iteration, n_samples).
-            gradients, hessians = self.loss_.init_gradients_and_hessians(
-                n_samples=n_samples,
-                prediction_dim=self.n_trees_per_iteration_
-            )
+
+            if multi_output:
+                gradients, hessians = self.loss_.init_gradients_and_hessians(
+                    n_samples=n_samples,
+                    prediction_dim=non_srp.shape[1]
+                )
+            else:
+                gradients, hessians = self.loss_.init_gradients_and_hessians(
+                    n_samples=n_samples,
+                    prediction_dim=self.n_trees_per_iteration_
+                )
 
             # predictors is a matrix (list of lists) of TreePredictor objects
             # with shape (n_iter_, n_trees_per_iteration)
@@ -271,10 +279,16 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                     X_binned_train, y_train, self._small_trainset_seed)
 
             # Initialize the gradients and hessians
-            gradients, hessians = self.loss_.init_gradients_and_hessians(
-                n_samples=n_samples,
-                prediction_dim=self.n_trees_per_iteration_
-            )
+            if multi_output:
+                gradients, hessians = self.loss_.init_gradients_and_hessians(
+                    n_samples=n_samples,
+                    prediction_dim=non_srp.shape[1]
+                )
+            else:
+                gradients, hessians = self.loss_.init_gradients_and_hessians(
+                    n_samples=n_samples,
+                    prediction_dim=self.n_trees_per_iteration_
+                )
 
             # Get the predictors from the previous fit
             predictors = self._predictors
@@ -308,10 +322,15 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                     l2_regularization=self.l2_regularization,
                     shrinkage=self.learning_rate)
                 grower.grow()
-                print(np.asarray(grower.histogram_builder.gradients))
-                print(np.asarray(grower.histogram_builder.hessians))
+                # print(np.asarray(grower.histogram_builder.gradients))
+                # print(np.asarray(grower.histogram_builder.hessians))
                 # print(np.asarray(grower.histogram_builder.X_binned))
-                # for leaf in grower.finalized_leaves:
+                print(hessians.shape)
+                for leaf in grower.finalized_leaves:
+                    print(np.asarray(leaf.sample_indices))
+                    leaf.sum_gradients = np.sum(gradients[:, leaf.sample_indices], axis=1)
+                    leaf.value = -grower.shrinkage * leaf.sum_gradients / (
+                            leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps)
                     # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
                     # print(X[:,leaf.parent.split_info.feature_idx])
                     # print('leaf value:' + str(leaf.value))           #prediction value
