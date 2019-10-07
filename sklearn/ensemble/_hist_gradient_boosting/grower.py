@@ -75,6 +75,7 @@ class TreeNode:
     histograms = None
     sibling = None
     parent = None
+    residual = None
 
     # start and stop indices of the node in the splitter.partition
     # array. Concretely,
@@ -93,6 +94,7 @@ class TreeNode:
         self.sample_indices = sample_indices
         self.n_samples = sample_indices.shape[0]
         self.sum_gradients = sum_gradients
+        self.sum_reses = sum_gradients
         self.sum_hessians = sum_hessians
         self.parent = parent
 

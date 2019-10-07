@@ -80,7 +80,7 @@ def test_early_stopping_regression(scoring, validation_fraction,
         random_state=0
     )
     gb.fit(X, y)
-
+    print(gb.predict_multi(X, np.shape(y)[1]))
     if n_iter_no_change is not None:
         assert n_iter_no_change <= gb.n_iter_ < max_iter
     else:

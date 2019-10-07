@@ -26,4 +26,5 @@ PREDICTOR_RECORD_DTYPE = np.dtype([
     ('depth', np.uint32),
     ('is_leaf', np.uint8),
     ('bin_threshold', X_BINNED_DTYPE),
+    ('residual', Y_DTYPE),
 ])
