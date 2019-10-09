@@ -91,6 +91,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         -------
         self : object
         """
+        global multi_gradients
         fit_start_time = time()
         acc_find_split_time = 0.  # time spent finding the best splits
         acc_apply_split_time = 0.  # time spent splitting nodes
@@ -98,6 +99,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         # time spent predicting X for gradient and hessians update
         acc_prediction_time = 0.
         multi_output = len(np.asarray(y).shape) == 2
+        non_sparse = y
         if multi_output:
             y = SparseRandomProjection(n_components=1,
                                        random_state=np.random.RandomState(42)).fit_transform(X=y)
@@ -172,6 +174,28 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             # shape (n_trees_per_iteration, n_samples) where
             # n_trees_per_iterations is n_classes in multiclass classification,
             # else 1.
+            if multi_output:
+                self._baseline_prediction = self.loss_.get_baseline_prediction(
+                    non_sparse, self.n_trees_per_iteration_
+                )
+                multi_raw_predictions = np.zeros(
+                    shape=(self.n_trees_per_iteration_, n_samples, np.shape(non_sparse)[1]),
+                    dtype=self._baseline_prediction.dtype
+                )
+                multi_raw_predictions += self._baseline_prediction
+                # initialize gradients and hessians (empty arrays).
+                # shape = (n_trees_per_iteration, n_samples).
+
+                # if multi_output:
+                #     gradients, hessians = self.loss_.init_gradients_and_hessians(
+                #         n_samples=n_samples,
+                #         prediction_dim=non_srp.shape[1]
+                #     )
+                # else:
+                multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
+                    n_samples=n_samples,
+                    prediction_dim=(non_sparse.shape[1])
+                )
             self._baseline_prediction = self.loss_.get_baseline_prediction(
                 y_train, self.n_trees_per_iteration_
             )
@@ -180,7 +204,6 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 dtype=self._baseline_prediction.dtype
             )
             raw_predictions += self._baseline_prediction
-
             # initialize gradients and hessians (empty arrays).
             # shape = (n_trees_per_iteration, n_samples).
 
@@ -277,12 +300,10 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                     X_binned_train, y_train, self._small_trainset_seed)
 
             # Initialize the gradients and hessians
-            # if multi_output:
-            #     gradients, hessians = self.loss_.init_gradients_and_hessians(
-            #         n_samples=n_samples,
-            #         prediction_dim=non_srp.shape[1]
-            #     )
-            # else:
+            multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
+                n_samples=n_samples,
+                prediction_dim=(non_sparse.shape[1])
+            )
             gradients, hessians = self.loss_.init_gradients_and_hessians(
                 n_samples=n_samples,
                 prediction_dim=self.n_trees_per_iteration_
@@ -325,9 +346,8 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 # print(np.asarray(grower.histogram_builder.X_binned))
                 # print(hessians.shape)
                 for leaf in grower.finalized_leaves:
-                    # print(np.asarray(leaf.sample_indices))
-                    leaf.sum_reses = np.sum(gradients[:, leaf.sample_indices], axis=1)
-                    leaf.residual = -grower.shrinkage * leaf.sum_gradients / (
+                    leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
+                    leaf.residual = -grower.shrinkage * leaf.sum_residuals / (
                             leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps)
                     # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
                     # print(X[:,leaf.parent.split_info.feature_idx])
@@ -620,7 +640,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         is_binned = getattr(self, '_in_fit', False)
         n_samples = X.shape[0]
         raw_predictions = np.zeros(
-            shape=(self.n_trees_per_iteration_, n_samples),
+            shape=(self.n_trees_per_iteration_, n_samples, shape_y),
             dtype=self._baseline_prediction.dtype
         )
         raw_predictions += self._baseline_prediction
