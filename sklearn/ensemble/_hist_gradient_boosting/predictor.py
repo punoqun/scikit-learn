@@ -5,7 +5,7 @@ This module contains the TreePredictor class which is used for prediction.
 
 import numpy as np
 
-from .types import Y_DTYPE
+from .common import Y_DTYPE
 from ._predictor import _predict_from_numeric_data
 from ._predictor import _predict_from_numeric_data_multi
 from ._predictor import _predict_from_binned_data
@@ -68,13 +68,17 @@ class TreePredictor:
         _predict_from_numeric_data_multi(self.nodes, X, out)
         return out
 
-    def predict_binned(self, X):
+    def predict_binned(self, X, missing_values_bin_idx):
         """Predict raw values for binned data.
 
         Parameters
         ----------
         X : ndarray, shape (n_samples, n_features)
             The input samples.
+        missing_values_bin_idx : uint8
+            Index of the bin that is used for missing values. This is the
+            index of the last bin and is always equal to max_bins (as passed
+            to the GBDT classes), or equivalently to n_bins - 1.
 
         Returns
         -------
@@ -82,7 +86,7 @@ class TreePredictor:
             The raw predicted values.
         """
         out = np.empty(X.shape[0], dtype=Y_DTYPE)
-        _predict_from_binned_data(self.nodes, X, out)
+        _predict_from_binned_data(self.nodes, X, missing_values_bin_idx, out)
         return out
 
     def predict_binned_multi(self, X, shape_y):
