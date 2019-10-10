@@ -359,10 +359,11 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 # print(np.asarray(grower.histogram_builder.hessians))
                 # print(np.asarray(grower.histogram_builder.X_binned))
                 # print(hessians.shape)
-                for leaf in grower.finalized_leaves:
-                    leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
-                    leaf.residual = -grower.shrinkage * leaf.sum_residuals / (
-                            leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps)
+                if multi_output:
+                    for leaf in grower.finalized_leaves:
+                        leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
+                        leaf.residual = -grower.shrinkage * leaf.sum_residuals / (
+                                leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps)
                     # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
                     # print(X[:,leaf.parent.split_info.feature_idx])
                     # print('leaf value:' + str(leaf.value))           #prediction value
