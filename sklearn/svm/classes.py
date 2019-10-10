@@ -44,8 +44,7 @@ class LinearSVC(BaseEstimator, LinearClassifierMixin,
         Tolerance for stopping criteria.
 
     C : float, optional (default=1.0)
-        Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive.
+        Penalty parameter C of the error term.
 
     multi_class : string, 'ovr' or 'crammer_singer' (default='ovr')
         Determines the multi-class strategy if `y` contains more than
@@ -113,7 +112,7 @@ else [n_classes, n_features]
     intercept_ : array, shape = [1] if n_classes == 2 else [n_classes]
         Constants in decision function.
 
-    classes_ : array of shape (n_classes,)
+    classes_ : array of shape = (n_classes,)
         The unique classes labels.
 
     n_iter_ : int
@@ -198,14 +197,14 @@ else [n_classes, n_features]
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : {array-like, sparse matrix}, shape = [n_samples, n_features]
             Training vector, where n_samples in the number of samples and
             n_features is the number of features.
 
-        y : array-like of shape (n_samples,)
+        y : array-like, shape = [n_samples]
             Target vector relative to X
 
-        sample_weight : array-like of shape (n_samples,), default=None
+        sample_weight : array-like, shape = [n_samples], optional
             Array of weights that are assigned to individual
             samples. If not provided,
             then each sample is given unit weight.
@@ -251,7 +250,7 @@ else [n_classes, n_features]
         return self
 
 
-class LinearSVR(RegressorMixin, LinearModel):
+class LinearSVR(LinearModel, RegressorMixin):
     """Linear Support Vector Regression.
 
     Similar to SVR with parameter kernel='linear', but implemented in terms of
@@ -274,8 +273,8 @@ class LinearSVR(RegressorMixin, LinearModel):
         Tolerance for stopping criteria.
 
     C : float, optional (default=1.0)
-        Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive.
+        Penalty parameter C of the error term. The penalty is a squared
+        l2 penalty. The bigger this parameter, the less regularization is used.
 
     loss : string, optional (default='epsilon_insensitive')
         Specifies the loss function. The epsilon-insensitive loss
@@ -385,14 +384,14 @@ class LinearSVR(RegressorMixin, LinearModel):
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+        X : {array-like, sparse matrix}, shape = [n_samples, n_features]
             Training vector, where n_samples in the number of samples and
             n_features is the number of features.
 
-        y : array-like of shape (n_samples,)
+        y : array-like, shape = [n_samples]
             Target vector relative to X
 
-        sample_weight : array-like of shape (n_samples,), default=None
+        sample_weight : array-like, shape = [n_samples], optional
             Array of weights that are assigned to individual
             samples. If not provided,
             then each sample is given unit weight.
@@ -455,9 +454,7 @@ class SVC(BaseSVC):
     Parameters
     ----------
     C : float, optional (default=1.0)
-        Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive. The penalty
-        is a squared l2 penalty.
+        Penalty parameter C of the error term.
 
     kernel : string, optional (default='rbf')
         Specifies the kernel type to be used in the algorithm.
@@ -490,9 +487,7 @@ class SVC(BaseSVC):
 
     probability : boolean, optional (default=False)
         Whether to enable probability estimates. This must be enabled prior
-        to calling `fit`, will slow down that method as it internally uses
-        5-fold cross-validation, and `predict_proba` may be inconsistent with
-        `predict`. Read more in the :ref:`User Guide <scores_probabilities>`.
+        to calling `fit`, and will slow down that method.
 
     tol : float, optional (default=1e-3)
         Tolerance for stopping criterion.
@@ -550,10 +545,10 @@ class SVC(BaseSVC):
 
     Attributes
     ----------
-    support_ : array-like of shape (n_SV)
+    support_ : array-like, shape = [n_SV]
         Indices of support vectors.
 
-    support_vectors_ : array-like of shape (n_SV, n_features)
+    support_vectors_ : array-like, shape = [n_SV, n_features]
         Support vectors.
 
     n_support_ : array-like, dtype=int32, shape = [n_class]
@@ -573,32 +568,25 @@ class SVC(BaseSVC):
         `coef_` is a readonly property derived from `dual_coef_` and
         `support_vectors_`.
 
-    intercept_ : ndarray of shape (n_class * (n_class-1) / 2,)
+    intercept_ : array, shape = [n_class * (n_class-1) / 2]
         Constants in decision function.
 
     fit_status_ : int
         0 if correctly fitted, 1 otherwise (will raise warning)
 
-    classes_ : array of shape (n_classes,)
+    classes_ : array of shape = [n_classes]
         The classes labels.
 
     probA_ : array, shape = [n_class * (n_class-1) / 2]
     probB_ : array, shape = [n_class * (n_class-1) / 2]
-        If `probability=True`, it corresponds to the parameters learned in
-        Platt scaling to produce probability estimates from decision values.
-        If `probability=False`, it's an empty array. Platt scaling uses the
-        logistic function
+        If probability=True, the parameters learned in Platt scaling to
+        produce probability estimates from decision values. If
+        probability=False, an empty array. Platt scaling uses the logistic
+        function
         ``1 / (1 + exp(decision_value * probA_ + probB_))``
         where ``probA_`` and ``probB_`` are learned from the dataset [2]_. For
         more information on the multiclass case and training procedure see
         section 8 of [1]_.
-
-    class_weight_ : ndarray of shape (n_class,)
-        Multipliers of parameter C for each class.
-        Computed based on the ``class_weight`` parameter.
-
-    shape_fit_ : tuple of int of shape (n_dimensions_of_X,)
-        Array dimensions of training vector ``X``.
 
     Examples
     --------
@@ -698,9 +686,7 @@ class NuSVC(BaseSVC):
 
     probability : boolean, optional (default=False)
         Whether to enable probability estimates. This must be enabled prior
-        to calling `fit`, will slow down that method as it internally uses
-        5-fold cross-validation, and `predict_proba` may be inconsistent with
-        `predict`. Read more in the :ref:`User Guide <scores_probabilities>`.
+        to calling `fit`, and will slow down that method.
 
     tol : float, optional (default=1e-3)
         Tolerance for stopping criterion.
@@ -756,10 +742,10 @@ class NuSVC(BaseSVC):
 
     Attributes
     ----------
-    support_ : array-like of shape (n_SV)
+    support_ : array-like, shape = [n_SV]
         Indices of support vectors.
 
-    support_vectors_ : array-like of shape (n_SV, n_features)
+    support_vectors_ : array-like, shape = [n_SV, n_features]
         Support vectors.
 
     n_support_ : array-like, dtype=int32, shape = [n_class]
@@ -779,32 +765,11 @@ class NuSVC(BaseSVC):
         `coef_` is readonly property derived from `dual_coef_` and
         `support_vectors_`.
 
-    intercept_ : ndarray of shape (n_class * (n_class-1) / 2,)
+    intercept_ : array, shape = [n_class * (n_class-1) / 2]
         Constants in decision function.
 
-    classes_ : array of shape (n_classes,)
+    classes_ : array of shape = (n_classes,)
         The unique classes labels.
-
-    fit_status_ : int
-        0 if correctly fitted, 1 if the algorithm did not converge.
-
-    probA_ : ndarray, shape of (n_class * (n_class-1) / 2,)
-    probB_ : ndarray of shape (n_class * (n_class-1) / 2,)
-        If `probability=True`, it corresponds to the parameters learned in
-        Platt scaling to produce probability estimates from decision values.
-        If `probability=False`, it's an empty array. Platt scaling uses the
-        logistic function
-        ``1 / (1 + exp(decision_value * probA_ + probB_))``
-        where ``probA_`` and ``probB_`` are learned from the dataset [2]_. For
-        more information on the multiclass case and training procedure see
-        section 8 of [1]_.
-
-    class_weight_ : ndarray of shape (n_class,)
-        Multipliers of parameter C of each class.
-        Computed based on the ``class_weight`` parameter.
-
-    shape_fit_ : tuple of int of shape (n_dimensions_of_X,)
-        Array dimensions of training vector ``X``.
 
     Examples
     --------
@@ -827,14 +792,11 @@ class NuSVC(BaseSVC):
         Scalable linear Support Vector Machine for classification using
         liblinear.
 
-    References
-    ----------
-    .. [1] `LIBSVM: A Library for Support Vector Machines
-        <http://www.csie.ntu.edu.tw/~cjlin/papers/libsvm.pdf>`_
-
-    .. [2] `Platt, John (1999). "Probabilistic outputs for support vector
-        machines and comparison to regularizedlikelihood methods."
-        <http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.41.1639>`_
+    Notes
+    -----
+    **References:**
+    `LIBSVM: A Library for Support Vector Machines
+    <http://www.csie.ntu.edu.tw/~cjlin/papers/libsvm.pdf>`__
     """
 
     _impl = 'nu_svc'
@@ -855,7 +817,7 @@ class NuSVC(BaseSVC):
             random_state=random_state)
 
 
-class SVR(RegressorMixin, BaseLibSVM):
+class SVR(BaseLibSVM, RegressorMixin):
     """Epsilon-Support Vector Regression.
 
     The free parameters in the model are C and epsilon.
@@ -900,9 +862,7 @@ class SVR(RegressorMixin, BaseLibSVM):
         Tolerance for stopping criterion.
 
     C : float, optional (default=1.0)
-        Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive.
-        The penalty is a squared l2 penalty.
+        Penalty parameter C of the error term.
 
     epsilon : float, optional (default=0.1)
          Epsilon in the epsilon-SVR model. It specifies the epsilon-tube
@@ -926,10 +886,10 @@ class SVR(RegressorMixin, BaseLibSVM):
 
     Attributes
     ----------
-    support_ : array-like of shape (n_SV)
+    support_ : array-like, shape = [n_SV]
         Indices of support vectors.
 
-    support_vectors_ : array-like of shape (n_SV, n_features)
+    support_vectors_ : array-like, shape = [nSV, n_features]
         Support vectors.
 
     dual_coef_ : array, shape = [1, n_SV]
@@ -941,9 +901,6 @@ class SVR(RegressorMixin, BaseLibSVM):
 
         `coef_` is readonly property derived from `dual_coef_` and
         `support_vectors_`.
-
-    fit_status_ : int
-        0 if correctly fitted, 1 otherwise (will raise warning)
 
     intercept_ : array, shape = [1]
         Constants in decision function.
@@ -990,7 +947,7 @@ class SVR(RegressorMixin, BaseLibSVM):
             class_weight=None, max_iter=max_iter, random_state=None)
 
 
-class NuSVR(RegressorMixin, BaseLibSVM):
+class NuSVR(BaseLibSVM, RegressorMixin):
     """Nu Support Vector Regression.
 
     Similar to NuSVC, for regression, uses a parameter nu to control
@@ -1055,10 +1012,10 @@ class NuSVR(RegressorMixin, BaseLibSVM):
 
     Attributes
     ----------
-    support_ : array-like of shape (n_SV)
+    support_ : array-like, shape = [n_SV]
         Indices of support vectors.
 
-    support_vectors_ : array-like of shape (n_SV, n_features)
+    support_vectors_ : array-like, shape = [nSV, n_features]
         Support vectors.
 
     dual_coef_ : array, shape = [1, n_SV]
@@ -1115,7 +1072,7 @@ class NuSVR(RegressorMixin, BaseLibSVM):
             verbose=verbose, max_iter=max_iter, random_state=None)
 
 
-class OneClassSVM(OutlierMixin, BaseLibSVM):
+class OneClassSVM(BaseLibSVM, OutlierMixin):
     """Unsupervised Outlier Detection.
 
     Estimate the support of a high-dimensional distribution.
@@ -1176,10 +1133,10 @@ class OneClassSVM(OutlierMixin, BaseLibSVM):
 
     Attributes
     ----------
-    support_ : array-like of shape (n_SV)
+    support_ : array-like, shape = [n_SV]
         Indices of support vectors.
 
-    support_vectors_ : array-like of shape (n_SV, n_features)
+    support_vectors_ : array-like, shape = [nSV, n_features]
         Support vectors.
 
     dual_coef_ : array, shape = [1, n_SV]
@@ -1200,9 +1157,6 @@ class OneClassSVM(OutlierMixin, BaseLibSVM):
         We have the relation: decision_function = score_samples - `offset_`.
         The offset is the opposite of `intercept_` and is provided for
         consistency with other outlier detection algorithms.
-
-    fit_status_ : int
-        0 if correctly fitted, 1 otherwise (will raise warning)
 
     Examples
     --------

@@ -27,7 +27,7 @@ from ..utils.validation import (check_is_fitted, check_array, check_X_y,
 from ..exceptions import ConvergenceWarning
 
 
-class NeighborhoodComponentsAnalysis(TransformerMixin, BaseEstimator):
+class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
     """Neighborhood Components Analysis
 
     Neighborhood Component Analysis (NCA) is a machine learning algorithm for
@@ -59,14 +59,14 @@ class NeighborhoodComponentsAnalysis(TransformerMixin, BaseEstimator):
         'pca'
             ``n_components`` principal components of the inputs passed
             to :meth:`fit` will be used to initialize the transformation.
-            (See :class:`~sklearn.decomposition.PCA`)
+            (See `decomposition.PCA`)
 
         'lda'
             ``min(n_components, n_classes)`` most discriminative
             components of the inputs passed to :meth:`fit` will be used to
             initialize the transformation. (If ``n_components > n_classes``,
             the rest of the components will be zero.) (See
-            :class:`~sklearn.discriminant_analysis.LinearDiscriminantAnalysis`)
+            `discriminant_analysis.LinearDiscriminantAnalysis`)
 
         'identity'
             If ``n_components`` is strictly smaller than the
@@ -258,7 +258,7 @@ class NeighborhoodComponentsAnalysis(TransformerMixin, BaseEstimator):
             If :meth:`fit` has not been called before.
         """
 
-        check_is_fitted(self)
+        check_is_fitted(self, ['components_'])
         X = check_array(X)
 
         return np.dot(X, self.components_.T)

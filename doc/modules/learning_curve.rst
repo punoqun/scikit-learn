@@ -74,7 +74,8 @@ The function :func:`validation_curve` can help in this case::
   >>> from sklearn.linear_model import Ridge
 
   >>> np.random.seed(0)
-  >>> X, y = load_iris(return_X_y=True)
+  >>> iris = load_iris()
+  >>> X, y = iris.data, iris.target
   >>> indices = np.arange(y.shape[0])
   >>> np.random.shuffle(indices)
   >>> X, y = X[indices], y[indices]

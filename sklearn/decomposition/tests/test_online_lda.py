@@ -14,6 +14,7 @@ from sklearn.decomposition._online_lda import (_dirichlet_expectation_1d,
 from sklearn.utils.testing import assert_allclose
 from sklearn.utils.testing import assert_array_almost_equal
 from sklearn.utils.testing import assert_almost_equal
+from sklearn.utils.testing import assert_raises_regexp
 from sklearn.utils.testing import if_safe_multiprocessing_with_blas
 
 from sklearn.exceptions import NotFittedError
@@ -148,8 +149,8 @@ def test_lda_partial_fit_dim_mismatch():
                                     learning_offset=5., total_samples=20,
                                     random_state=rng)
     lda.partial_fit(X_1)
-    with pytest.raises(ValueError, match=r"^The provided data has"):
-        lda.partial_fit(X_2)
+    assert_raises_regexp(ValueError, r"^The provided data has",
+                         lda.partial_fit, X_2)
 
 
 def test_invalid_params():
@@ -165,8 +166,7 @@ def test_invalid_params():
     )
     for param, model in invalid_models:
         regex = r"^Invalid %r parameter" % param
-        with pytest.raises(ValueError, match=regex):
-            model.fit(X)
+        assert_raises_regexp(ValueError, regex, model.fit, X)
 
 
 def test_lda_negative_input():
@@ -174,8 +174,7 @@ def test_lda_negative_input():
     X = np.full((5, 10), -1.)
     lda = LatentDirichletAllocation()
     regex = r"^Negative values in data passed"
-    with pytest.raises(ValueError, match=regex):
-        lda.fit(X)
+    assert_raises_regexp(ValueError, regex, lda.fit, X)
 
 
 def test_lda_no_component_error():
@@ -185,8 +184,7 @@ def test_lda_no_component_error():
     lda = LatentDirichletAllocation()
     regex = ("This LatentDirichletAllocation instance is not fitted yet. "
              "Call 'fit' with appropriate arguments before using this method.")
-    with pytest.raises(NotFittedError, match=regex):
-        lda.perplexity(X)
+    assert_raises_regexp(NotFittedError, regex, lda.perplexity, X)
 
 
 def test_lda_transform_mismatch():
@@ -199,8 +197,8 @@ def test_lda_transform_mismatch():
     lda = LatentDirichletAllocation(n_components=n_components,
                                     random_state=rng)
     lda.partial_fit(X)
-    with pytest.raises(ValueError, match=r"^The provided data has"):
-        lda.partial_fit(X_2)
+    assert_raises_regexp(ValueError, r"^The provided data has",
+                         lda.partial_fit, X_2)
 
 
 @if_safe_multiprocessing_with_blas
@@ -249,12 +247,13 @@ def test_lda_preplexity_mismatch():
     lda.fit(X)
     # invalid samples
     invalid_n_samples = rng.randint(4, size=(n_samples + 1, n_components))
-    with pytest.raises(ValueError, match=r'Number of samples'):
-        lda._perplexity_precomp_distr(X, invalid_n_samples)
+    assert_raises_regexp(ValueError, r'Number of samples',
+                         lda._perplexity_precomp_distr, X, invalid_n_samples)
     # invalid topic number
     invalid_n_components = rng.randint(4, size=(n_samples, n_components + 1))
-    with pytest.raises(ValueError, match=r'Number of topics'):
-        lda._perplexity_precomp_distr(X, invalid_n_components)
+    assert_raises_regexp(ValueError, r'Number of topics',
+                         lda._perplexity_precomp_distr, X,
+                         invalid_n_components)
 
 
 @pytest.mark.parametrize('method', ('online', 'batch'))

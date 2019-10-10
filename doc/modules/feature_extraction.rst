@@ -1,4 +1,4 @@
-﻿.. _feature_extraction:
+﻿﻿.. _feature_extraction:
 
 ==================
 Feature extraction
@@ -384,9 +384,8 @@ removed to avoid them being construed as signal for prediction.  Sometimes,
 however, similar words are useful for prediction, such as in classifying
 writing style or personality.
 
-There are several known issues in our provided 'english' stop word list. It
-does not aim to be a general, 'one-size-fits-all' solution as some tasks 
-may require a more custom solution. See [NQY18]_ for more details. 
+There are several known issues in our provided 'english' stop word list. See
+[NQY18]_.
 
 Please take care in choosing a stop word list.
 Popular stop word lists may include words that are highly informative to
@@ -925,7 +924,7 @@ Some tips and tricks:
 
         >>> from nltk import word_tokenize          # doctest: +SKIP
         >>> from nltk.stem import WordNetLemmatizer # doctest: +SKIP
-        >>> class LemmaTokenizer:
+        >>> class LemmaTokenizer(object):
         ...     def __init__(self):
         ...         self.wnl = WordNetLemmatizer()
         ...     def __call__(self, doc):

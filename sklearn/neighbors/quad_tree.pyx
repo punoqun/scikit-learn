@@ -11,7 +11,6 @@ from cpython cimport Py_INCREF, PyObject, PyTypeObject
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from libc.stdio cimport printf
-from libc.stdint cimport SIZE_MAX
 
 from ..tree._utils cimport safe_realloc, sizet_ptr_to_ndarray
 from ..utils import check_array
@@ -28,6 +27,11 @@ cdef extern from "numpy/arrayobject.h":
                                 int nd, np.npy_intp* dims,
                                 np.npy_intp* strides,
                                 void* data, int flags, object obj)
+
+
+# XXX using (size_t)(-1) is ugly, but SIZE_MAX is not available in C89
+# (i.e., older MSVC).
+cdef SIZE_t DEFAULT = <SIZE_t>(-1)
 
 
 # Repeat struct definition for numpy
@@ -211,14 +215,14 @@ cdef class _QuadTree:
             Cell* child
             int i
 
-        # If the maximal capacity of the Tree have been reached, double the capacity
+        # If the maximal capacity of the Tree have been reach, double the capacity
         # We need to save the current cell id and the current point to retrieve them
         # in case the reallocation
         if self.cell_count + 1 > self.capacity:
             parent_id = cell.cell_id
             for i in range(self.n_dimensions):
                 save_point[i] = point[i]
-            self._resize(SIZE_MAX)
+            self._resize(DEFAULT)
             cell = &self.cells[parent_id]
             point = save_point
 
@@ -301,7 +305,7 @@ cdef class _QuadTree:
         cell.squared_max_width = 0
         cell.cumulative_size = 0
         for i in range(self.n_cells_per_cell):
-            cell.children[i] = SIZE_MAX
+            cell.children[i] = DEFAULT
 
     cdef void _init_root(self, DTYPE_t[3] min_bounds, DTYPE_t[3] max_bounds
                          ) nogil:
@@ -588,7 +592,7 @@ cdef class _QuadTree:
             with gil:
                 raise MemoryError()
 
-    cdef int _resize_c(self, SIZE_t capacity=SIZE_MAX) nogil except -1:
+    cdef int _resize_c(self, SIZE_t capacity=DEFAULT) nogil except -1:
         """Guts of _resize
 
         Returns -1 in case of failure to allocate memory (and raise MemoryError)
@@ -597,7 +601,7 @@ cdef class _QuadTree:
         if capacity == self.capacity and self.cells != NULL:
             return 0
 
-        if capacity == SIZE_MAX:
+        if capacity == DEFAULT:
             if self.capacity == 0:
                 capacity = 9  # default initial value to min
             else:

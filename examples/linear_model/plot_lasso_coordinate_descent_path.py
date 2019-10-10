@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import lasso_path, enet_path
 from sklearn import datasets
 
-
-X, y = datasets.load_diabetes(return_X_y=True)
-
+diabetes = datasets.load_diabetes()
+X = diabetes.data
+y = diabetes.target
 
 X /= X.std(axis=0)  # Standardize data (easier to set the l1_ratio parameter)
 

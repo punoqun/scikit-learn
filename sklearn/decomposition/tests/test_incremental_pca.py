@@ -4,6 +4,8 @@ import pytest
 
 from sklearn.utils.testing import assert_almost_equal
 from sklearn.utils.testing import assert_array_almost_equal
+from sklearn.utils.testing import assert_raises
+from sklearn.utils.testing import assert_raises_regex
 from sklearn.utils.testing import assert_allclose_dense_sparse
 
 from sklearn import datasets
@@ -113,19 +115,20 @@ def test_incremental_pca_validation():
     X = np.array([[0, 1, 0], [1, 0, 0]])
     n_samples, n_features = X.shape
     for n_components in [-1, 0, .99, 4]:
-        with pytest.raises(ValueError, match="n_components={} invalid"
-                           " for n_features={}, need more rows than"
-                           " columns for IncrementalPCA"
-                           " processing".format(n_components,
-                                                n_features)):
-            IncrementalPCA(n_components, batch_size=10).fit(X)
+        assert_raises_regex(ValueError,
+                            "n_components={} invalid for n_features={}, need"
+                            " more rows than columns for IncrementalPCA "
+                            "processing".format(n_components, n_features),
+                            IncrementalPCA(n_components, batch_size=10).fit, X)
 
     # Tests that n_components is also <= n_samples.
     n_components = 3
-    with pytest.raises(ValueError, match="n_components={} must be"
-                       " less or equal to the batch number of"
-                       " samples {}".format(n_components, n_samples)):
-        IncrementalPCA(n_components=n_components).partial_fit(X)
+    assert_raises_regex(ValueError,
+                        "n_components={} must be less or equal to "
+                        "the batch number of samples {}".format(
+                            n_components, n_samples),
+                        IncrementalPCA(
+                            n_components=n_components).partial_fit, X)
 
 
 def test_n_components_none():
@@ -158,12 +161,10 @@ def test_incremental_pca_set_params():
     ipca.fit(X)
     # Decreasing number of components
     ipca.set_params(n_components=10)
-    with pytest.raises(ValueError):
-        ipca.partial_fit(X2)
+    assert_raises(ValueError, ipca.partial_fit, X2)
     # Increasing number of components
     ipca.set_params(n_components=15)
-    with pytest.raises(ValueError):
-        ipca.partial_fit(X3)
+    assert_raises(ValueError, ipca.partial_fit, X3)
     # Returning to original setting
     ipca.set_params(n_components=20)
     ipca.partial_fit(X)
@@ -177,8 +178,7 @@ def test_incremental_pca_num_features_change():
     X2 = rng.randn(n_samples, 50)
     ipca = IncrementalPCA(n_components=None)
     ipca.fit(X)
-    with pytest.raises(ValueError):
-        ipca.partial_fit(X2)
+    assert_raises(ValueError, ipca.partial_fit, X2)
 
 
 def test_incremental_pca_batch_signs():

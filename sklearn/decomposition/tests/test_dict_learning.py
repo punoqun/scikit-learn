@@ -9,6 +9,7 @@ from sklearn.utils import check_array
 
 from sklearn.utils.testing import assert_array_almost_equal
 from sklearn.utils.testing import assert_array_equal
+from sklearn.utils.testing import assert_raises
 from sklearn.utils.testing import ignore_warnings
 from sklearn.utils.testing import TempMemmap
 
@@ -217,8 +218,7 @@ def test_dict_learning_nonzero_coefs():
 def test_dict_learning_unknown_fit_algorithm():
     n_components = 5
     dico = DictionaryLearning(n_components, fit_algorithm='<unknown>')
-    with pytest.raises(ValueError):
-        dico.fit(X)
+    assert_raises(ValueError, dico.fit, X)
 
 
 def test_dict_learning_split():
@@ -466,8 +466,7 @@ def test_unknown_method():
     n_components = 12
     rng = np.random.RandomState(0)
     V = rng.randn(n_components, n_features)  # random init
-    with pytest.raises(ValueError):
-        sparse_encode(X, V, algorithm="<unknown>")
+    assert_raises(ValueError, sparse_encode, X, V, algorithm="<unknown>")
 
 
 def test_sparse_coder_estimator():

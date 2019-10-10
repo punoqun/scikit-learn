@@ -23,21 +23,42 @@ from ..base import ClassifierMixin
 from ..base import RegressorMixin
 from ..base import TransformerMixin
 from ..base import clone
-from .base import _parallel_fit_estimator
-from .base import _BaseHeterogeneousEnsemble
 from ..preprocessing import LabelEncoder
 from ..utils import Bunch
 from ..utils.validation import check_is_fitted
+from ..utils.metaestimators import _BaseComposition
 from ..utils.multiclass import check_classification_targets
 from ..utils.validation import column_or_1d
 
 
-class _BaseVoting(TransformerMixin, _BaseHeterogeneousEnsemble):
+def _parallel_fit_estimator(estimator, X, y, sample_weight=None):
+    """Private function used to fit an estimator within a job."""
+    if sample_weight is not None:
+        try:
+            estimator.fit(X, y, sample_weight=sample_weight)
+        except TypeError as exc:
+            if "unexpected keyword argument 'sample_weight'" in str(exc):
+                raise ValueError(
+                    "Underlying estimator {} does not support sample weights."
+                    .format(estimator.__class__.__name__)
+                ) from exc
+            raise
+    else:
+        estimator.fit(X, y)
+    return estimator
+
+
+class _BaseVoting(_BaseComposition, TransformerMixin):
     """Base class for voting.
 
     Warning: This class should not be used directly. Use derived classes
     instead.
     """
+    _required_parameters = ['estimators']
+
+    @property
+    def named_estimators(self):
+        return Bunch(**dict(self.estimators))
 
     @property
     def _weights_not_none(self):
@@ -56,13 +77,27 @@ class _BaseVoting(TransformerMixin, _BaseHeterogeneousEnsemble):
         """
         common fit operations.
         """
-        names, clfs = self._validate_estimators()
+        if self.estimators is None or len(self.estimators) == 0:
+            raise AttributeError('Invalid `estimators` attribute, `estimators`'
+                                 ' should be a list of (string, estimator)'
+                                 ' tuples')
 
         if (self.weights is not None and
                 len(self.weights) != len(self.estimators)):
             raise ValueError('Number of `estimators` and weights must be equal'
                              '; got %d weights, %d estimators'
                              % (len(self.weights), len(self.estimators)))
+
+        names, clfs = zip(*self.estimators)
+        self._validate_names(names)
+
+        n_isnone = np.sum(
+            [clf in (None, 'drop') for _, clf in self.estimators]
+        )
+        if n_isnone == len(self.estimators):
+            raise ValueError(
+                'All estimators are None or "drop". At least one is required!'
+            )
 
         self.estimators_ = Parallel(n_jobs=self.n_jobs)(
                 delayed(_parallel_fit_estimator)(clone(clf), X, y,
@@ -75,8 +110,42 @@ class _BaseVoting(TransformerMixin, _BaseHeterogeneousEnsemble):
             self.named_estimators_[k[0]] = e
         return self
 
+    def set_params(self, **params):
+        """ Setting the parameters for the ensemble estimator
 
-class VotingClassifier(ClassifierMixin, _BaseVoting):
+        Valid parameter keys can be listed with get_params().
+
+        Parameters
+        ----------
+        **params : keyword arguments
+            Specific parameters using e.g. set_params(parameter_name=new_value)
+            In addition, to setting the parameters of the ensemble estimator,
+            the individual estimators of the ensemble estimator can also be
+            set or replaced by setting them to None.
+
+        Examples
+        --------
+        # In this example, the RandomForestClassifier is removed
+        clf1 = LogisticRegression()
+        clf2 = RandomForestClassifier()
+        eclf = VotingClassifier(estimators=[('lr', clf1), ('rf', clf2)]
+        eclf.set_params(rf=None)
+        """
+        return self._set_params('estimators', **params)
+
+    def get_params(self, deep=True):
+        """ Get the parameters of the ensemble estimator
+
+        Parameters
+        ----------
+        deep : bool
+            Setting it to True gets the various estimators and the parameters
+            of the estimators as well
+        """
+        return self._get_params('estimators', deep=deep)
+
+
+class VotingClassifier(_BaseVoting, ClassifierMixin):
     """Soft Voting/Majority Rule classifier for unfitted estimators.
 
     .. versionadded:: 0.17
@@ -171,7 +240,7 @@ class VotingClassifier(ClassifierMixin, _BaseVoting):
 
     def __init__(self, estimators, voting='hard', weights=None, n_jobs=None,
                  flatten_transform=True):
-        super().__init__(estimators=estimators)
+        self.estimators = estimators
         self.voting = voting
         self.weights = weights
         self.n_jobs = n_jobs
@@ -227,7 +296,7 @@ class VotingClassifier(ClassifierMixin, _BaseVoting):
             Predicted class labels.
         """
 
-        check_is_fitted(self)
+        check_is_fitted(self, 'estimators_')
         if self.voting == 'soft':
             maj = np.argmax(self.predict_proba(X), axis=1)
 
@@ -248,7 +317,7 @@ class VotingClassifier(ClassifierMixin, _BaseVoting):
 
     def _predict_proba(self, X):
         """Predict class probabilities for X in 'soft' voting """
-        check_is_fitted(self)
+        check_is_fitted(self, 'estimators_')
         avg = np.average(self._collect_probas(X), axis=0,
                          weights=self._weights_not_none)
         return avg
@@ -294,7 +363,7 @@ class VotingClassifier(ClassifierMixin, _BaseVoting):
                 array-like of shape (n_samples, n_classifiers), being
                 class labels predicted by each classifier.
         """
-        check_is_fitted(self)
+        check_is_fitted(self, 'estimators_')
 
         if self.voting == 'soft':
             probas = self._collect_probas(X)
@@ -306,7 +375,7 @@ class VotingClassifier(ClassifierMixin, _BaseVoting):
             return self._predict(X)
 
 
-class VotingRegressor(RegressorMixin, _BaseVoting):
+class VotingRegressor(_BaseVoting, RegressorMixin):
     """Prediction voting regressor for unfitted estimators.
 
     .. versionadded:: 0.21
@@ -364,7 +433,7 @@ class VotingRegressor(RegressorMixin, _BaseVoting):
     """
 
     def __init__(self, estimators, weights=None, n_jobs=None):
-        super().__init__(estimators=estimators)
+        self.estimators = estimators
         self.weights = weights
         self.n_jobs = n_jobs
 
@@ -408,7 +477,7 @@ class VotingRegressor(RegressorMixin, _BaseVoting):
         y : array of shape (n_samples,)
             The predicted values.
         """
-        check_is_fitted(self)
+        check_is_fitted(self, "estimators_")
         return np.average(self._predict(X), axis=1,
                           weights=self._weights_not_none)
 
@@ -426,5 +495,5 @@ class VotingRegressor(RegressorMixin, _BaseVoting):
             array-like of shape (n_samples, n_classifiers), being
             values predicted by each regressor.
         """
-        check_is_fitted(self)
+        check_is_fitted(self, 'estimators_')
         return self._predict(X)

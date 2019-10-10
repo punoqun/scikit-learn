@@ -6,7 +6,6 @@ Unsupervised learning
 -----------------------
 
 .. toctree::
-    :maxdepth: 2
 
     modules/mixture
     modules/manifold

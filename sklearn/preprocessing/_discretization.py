@@ -18,7 +18,7 @@ from ..utils.validation import check_is_fitted
 from ..utils.validation import FLOAT_DTYPES
 
 
-class KBinsDiscretizer(TransformerMixin, BaseEstimator):
+class KBinsDiscretizer(BaseEstimator, TransformerMixin):
     """Bin continuous data into intervals.
 
     Read more in the :ref:`User Guide <preprocessing_discretization>`.
@@ -253,7 +253,7 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
         Xt : numeric array-like or sparse matrix
             Data in the binned space.
         """
-        check_is_fitted(self)
+        check_is_fitted(self, ["bin_edges_"])
 
         Xt = check_array(X, copy=True, dtype=FLOAT_DTYPES)
         n_features = self.n_bins_.shape[0]
@@ -294,7 +294,7 @@ class KBinsDiscretizer(TransformerMixin, BaseEstimator):
         Xinv : numeric array-like
             Data in the original feature space.
         """
-        check_is_fitted(self)
+        check_is_fitted(self, ["bin_edges_"])
 
         if 'onehot' in self.encode:
             Xt = self._encoder.inverse_transform(Xt)

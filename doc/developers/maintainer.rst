@@ -109,8 +109,7 @@ Making a release
        $ twine upload dist/*
 
 7. For major/minor (not bug-fix release), update the symlink for ``stable``
-   and the ``latestStable`` variable in
-   https://github.com/scikit-learn/scikit-learn.github.io::
+   in https://github.com/scikit-learn/scikit-learn.github.io::
 
        $ cd /tmp
        $ git clone --depth 1 --no-checkout git@github.com:scikit-learn/scikit-learn.github.io.git
@@ -119,7 +118,6 @@ Making a release
        $ git checkout master
        $ rm stable
        $ ln -s 0.999 stable
-       $ sed -i "s/latestStable = '.*/latestStable = '0.999';" versionwarning.js
        $ git commit -m "Update stable to point to 0.999" stable
        $ git push origin master
 

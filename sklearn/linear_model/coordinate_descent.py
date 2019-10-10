@@ -498,7 +498,7 @@ def enet_path(X, y, l1_ratio=0.5, eps=1e-3, n_alphas=100, alphas=None,
 # ElasticNet model
 
 
-class ElasticNet(MultiOutputMixin, RegressorMixin, LinearModel):
+class ElasticNet(LinearModel, RegressorMixin, MultiOutputMixin):
     """Linear regression with combined L1 and L2 priors as regularizer.
 
     Minimizes the objective function::
@@ -528,7 +528,7 @@ class ElasticNet(MultiOutputMixin, RegressorMixin, LinearModel):
     alpha : float, optional
         Constant that multiplies the penalty terms. Defaults to 1.0.
         See the notes for the exact mathematical meaning of this
-        parameter. ``alpha = 0`` is equivalent to an ordinary least square,
+        parameter.``alpha = 0`` is equivalent to an ordinary least square,
         solved by the :class:`LinearRegression` object. For numerical
         reasons, using ``alpha = 0`` with the ``Lasso`` object is not advised.
         Given this, you should use the :class:`LinearRegression` object.
@@ -785,7 +785,7 @@ class ElasticNet(MultiOutputMixin, RegressorMixin, LinearModel):
         T : array, shape (n_samples,)
             The predicted decision function
         """
-        check_is_fitted(self)
+        check_is_fitted(self, 'n_iter_')
         if sparse.isspmatrix(X):
             return safe_sparse_dot(X, self.coef_.T,
                                    dense_output=True) + self.intercept_
@@ -820,7 +820,7 @@ class Lasso(ElasticNet):
     fit_intercept : boolean, optional, default True
         Whether to calculate the intercept for this model. If set
         to False, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
+        (e.g. data is expected to be already centered).
 
     normalize : boolean, optional, default False
         This parameter is ignored when ``fit_intercept`` is set to False.
@@ -1019,7 +1019,15 @@ def _path_residuals(X, y, train, test, path, path_params, alphas=None,
         coefs[:, nonzeros] /= X_scale[nonzeros][:, np.newaxis]
 
     intercepts = y_offset[:, np.newaxis] - np.dot(X_offset, coefs)
-    X_test_coefs = safe_sparse_dot(X_test, coefs)
+    if sparse.issparse(X_test):
+        n_order, n_features, n_alphas = coefs.shape
+        # Work around for sparse matrices since coefs is a 3-D numpy array.
+        coefs_feature_major = np.rollaxis(coefs, 1)
+        feature_2d = np.reshape(coefs_feature_major, (n_features, -1))
+        X_test_coefs = safe_sparse_dot(X_test, feature_2d)
+        X_test_coefs = X_test_coefs.reshape(X_test.shape[0], n_order, -1)
+    else:
+        X_test_coefs = safe_sparse_dot(X_test, coefs)
     residues = X_test_coefs - y_test[:, :, np.newaxis]
     residues += intercepts
     this_mses = ((residues ** 2).mean(axis=0)).mean(axis=0)
@@ -1027,7 +1035,7 @@ def _path_residuals(X, y, train, test, path, path_params, alphas=None,
     return this_mses
 
 
-class LinearModelCV(MultiOutputMixin, LinearModel, metaclass=ABCMeta):
+class LinearModelCV(LinearModel, MultiOutputMixin, metaclass=ABCMeta):
     """Base class for iterative model fitting along a regularization path"""
 
     @abstractmethod
@@ -1112,8 +1120,7 @@ class LinearModelCV(MultiOutputMixin, LinearModel, metaclass=ABCMeta):
             # Let us not impose fortran ordering so far: it is
             # not useful for the cross-validation loop and will be done
             # by the model fitting itself
-            X = check_array(X, 'csc', dtype=[np.float64, np.float32],
-                            copy=False)
+            X = check_array(X, 'csc', copy=False)
             if sparse.isspmatrix(X):
                 if (hasattr(reference_to_old_X, "data") and
                    not np.may_share_memory(reference_to_old_X.data, X.data)):
@@ -1211,9 +1218,7 @@ class LinearModelCV(MultiOutputMixin, LinearModel, metaclass=ABCMeta):
         model.alpha = best_alpha
         model.l1_ratio = best_l1_ratio
         model.copy_X = copy_X
-        precompute = getattr(self, "precompute", None)
-        if isinstance(precompute, str) and precompute == "auto":
-            model.precompute = False
+        model.precompute = False
         model.fit(X, y)
         if not hasattr(self, 'l1_ratio'):
             del self.l1_ratio_
@@ -1224,7 +1229,7 @@ class LinearModelCV(MultiOutputMixin, LinearModel, metaclass=ABCMeta):
         return self
 
 
-class LassoCV(RegressorMixin, LinearModelCV):
+class LassoCV(LinearModelCV, RegressorMixin):
     """Lasso linear model with iterative fitting along a regularization path.
 
     See glossary entry for :term:`cross-validation estimator`.
@@ -1253,7 +1258,7 @@ class LassoCV(RegressorMixin, LinearModelCV):
     fit_intercept : boolean, default True
         whether to calculate the intercept for this model. If set
         to false, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
+        (e.g. data is expected to be already centered).
 
     normalize : boolean, optional, default False
         This parameter is ignored when ``fit_intercept`` is set to False.
@@ -1389,10 +1394,8 @@ class LassoCV(RegressorMixin, LinearModelCV):
             cv=cv, verbose=verbose, n_jobs=n_jobs, positive=positive,
             random_state=random_state, selection=selection)
 
-    def _more_tags(self):
-        return {'multioutput': False}
 
-class ElasticNetCV(RegressorMixin, LinearModelCV):
+class ElasticNetCV(LinearModelCV, RegressorMixin):
     """Elastic Net model with iterative fitting along a regularization path.
 
     See glossary entry for :term:`cross-validation estimator`.
@@ -1427,7 +1430,7 @@ class ElasticNetCV(RegressorMixin, LinearModelCV):
     fit_intercept : boolean
         whether to calculate the intercept for this model. If set
         to false, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
+        (e.g. data is expected to be already centered).
 
     normalize : boolean, optional, default False
         This parameter is ignored when ``fit_intercept`` is set to False.
@@ -1596,8 +1599,6 @@ class ElasticNetCV(RegressorMixin, LinearModelCV):
         self.random_state = random_state
         self.selection = selection
 
-    def _more_tags(self):
-        return {'multioutput': False}
 
 ###############################################################################
 # Multi Task ElasticNet and Lasso models (with joint feature selection)
@@ -1634,7 +1635,7 @@ class MultiTaskElasticNet(Lasso):
     fit_intercept : boolean
         whether to calculate the intercept for this model. If set
         to false, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
+        (e.g. data is expected to be already centered).
 
     normalize : boolean, optional, default False
         This parameter is ignored when ``fit_intercept`` is set to False.
@@ -1820,7 +1821,7 @@ class MultiTaskLasso(MultiTaskElasticNet):
     fit_intercept : boolean
         whether to calculate the intercept for this model. If set
         to false, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
+        (e.g. data is expected to be already centered).
 
     normalize : boolean, optional, default False
         This parameter is ignored when ``fit_intercept`` is set to False.
@@ -1914,7 +1915,7 @@ class MultiTaskLasso(MultiTaskElasticNet):
         self.selection = selection
 
 
-class MultiTaskElasticNetCV(RegressorMixin, LinearModelCV):
+class MultiTaskElasticNetCV(LinearModelCV, RegressorMixin):
     """Multi-task L1/L2 ElasticNet with built-in cross-validation.
 
     See glossary entry for :term:`cross-validation estimator`.
@@ -1961,7 +1962,7 @@ class MultiTaskElasticNetCV(RegressorMixin, LinearModelCV):
     fit_intercept : boolean
         whether to calculate the intercept for this model. If set
         to false, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
+        (e.g. data is expected to be already centered).
 
     normalize : boolean, optional, default False
         This parameter is ignored when ``fit_intercept`` is set to False.
@@ -2102,7 +2103,7 @@ class MultiTaskElasticNetCV(RegressorMixin, LinearModelCV):
         return {'multioutput_only': True}
 
 
-class MultiTaskLassoCV(RegressorMixin, LinearModelCV):
+class MultiTaskLassoCV(LinearModelCV, RegressorMixin):
     """Multi-task Lasso model trained with L1/L2 mixed-norm as regularizer.
 
     See glossary entry for :term:`cross-validation estimator`.
@@ -2135,7 +2136,7 @@ class MultiTaskLassoCV(RegressorMixin, LinearModelCV):
     fit_intercept : boolean
         whether to calculate the intercept for this model. If set
         to false, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
+        (e.g. data is expected to be already centered).
 
     normalize : boolean, optional, default False
         This parameter is ignored when ``fit_intercept`` is set to False.

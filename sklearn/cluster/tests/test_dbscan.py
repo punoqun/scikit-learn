@@ -12,6 +12,7 @@ from scipy import sparse
 import pytest
 
 from sklearn.utils.testing import assert_array_equal
+from sklearn.utils.testing import assert_raises
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster.dbscan_ import DBSCAN
 from sklearn.cluster.dbscan_ import dbscan
@@ -93,23 +94,6 @@ def test_dbscan_sparse_precomputed(include_self):
                                       metric='precomputed')
     assert_array_equal(core_dense, core_sparse)
     assert_array_equal(labels_dense, labels_sparse)
-
-
-def test_dbscan_sparse_precomputed_different_eps():
-    # test that precomputed neighbors graph is filtered if computed with
-    # a radius larger than DBSCAN's eps.
-    lower_eps = 0.2
-    nn = NearestNeighbors(radius=lower_eps).fit(X)
-    D_sparse = nn.radius_neighbors_graph(X, mode='distance')
-    dbscan_lower = dbscan(D_sparse, eps=lower_eps, metric='precomputed')
-
-    higher_eps = lower_eps + 0.7
-    nn = NearestNeighbors(radius=higher_eps).fit(X)
-    D_sparse = nn.radius_neighbors_graph(X, mode='distance')
-    dbscan_higher = dbscan(D_sparse, eps=lower_eps, metric='precomputed')
-
-    assert_array_equal(dbscan_lower[0], dbscan_higher[0])
-    assert_array_equal(dbscan_lower[1], dbscan_higher[1])
 
 
 @pytest.mark.parametrize('use_sparse', [True, False])
@@ -238,15 +222,23 @@ def test_input_validation():
     DBSCAN().fit(X)             # must not raise exception
 
 
-@pytest.mark.parametrize(
-    "args",
-    [{'eps': -1.0}, {'algorithm': 'blah'}, {'metric': 'blah'},
-     {'leaf_size': -1}, {'p': -1}]
-)
-def test_dbscan_badargs(args):
+def test_dbscan_badargs():
     # Test bad argument values: these should all raise ValueErrors
-    with pytest.raises(ValueError):
-        dbscan(X, **args)
+    assert_raises(ValueError,
+                  dbscan,
+                  X, eps=-1.0)
+    assert_raises(ValueError,
+                  dbscan,
+                  X, algorithm='blah')
+    assert_raises(ValueError,
+                  dbscan,
+                  X, metric='blah')
+    assert_raises(ValueError,
+                  dbscan,
+                  X, leaf_size=-1)
+    assert_raises(ValueError,
+                  dbscan,
+                  X, p=-1)
 
 
 def test_pickle():
@@ -268,10 +260,8 @@ def test_boundaries():
 
 def test_weighted_dbscan():
     # ensure sample_weight is validated
-    with pytest.raises(ValueError):
-        dbscan([[0], [1]], sample_weight=[2])
-    with pytest.raises(ValueError):
-        dbscan([[0], [1]], sample_weight=[2, 3, 4])
+    assert_raises(ValueError, dbscan, [[0], [1]], sample_weight=[2])
+    assert_raises(ValueError, dbscan, [[0], [1]], sample_weight=[2, 3, 4])
 
     # ensure sample_weight has an effect
     assert_array_equal([], dbscan([[0], [1]], sample_weight=None,

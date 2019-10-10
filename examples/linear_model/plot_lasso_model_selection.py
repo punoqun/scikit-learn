@@ -57,7 +57,9 @@ from sklearn import datasets
 # This is to avoid division by zero while doing np.log10
 EPSILON = 1e-4
 
-X, y = datasets.load_diabetes(return_X_y=True)
+diabetes = datasets.load_diabetes()
+X = diabetes.data
+y = diabetes.target
 
 rng = np.random.RandomState(42)
 X = np.c_[X, rng.randn(X.shape[0], 14)]  # add some bad features
@@ -89,7 +91,6 @@ def plot_ic_criterion(model, name, color):
                 label='alpha: %s estimate' % name)
     plt.xlabel('-log(alpha)')
     plt.ylabel('criterion')
-
 
 plt.figure()
 plot_ic_criterion(model_aic, 'AIC', 'b')

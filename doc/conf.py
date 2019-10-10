@@ -15,7 +15,6 @@
 import sys
 import os
 import warnings
-import re
 
 # If extensions (or modules to document with autodoc) are in another
 # directory, add these directories to sys.path here. If the directory
@@ -37,7 +36,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.imgconverter',
     'sphinx_gallery.gen_gallery',
-    'sphinx_issues'
+    'sphinx_issues',
+    'custom_references_resolver'
 ]
 
 # this is needed for some reason...
@@ -52,8 +52,9 @@ if os.environ.get('NO_MATHJAX'):
     imgmath_image_format = 'svg'
 else:
     extensions.append('sphinx.ext.mathjax')
-    mathjax_path = ('https://cdn.jsdelivr.net/npm/mathjax@3/es5/'
-                    'tex-chtml.js')
+    mathjax_path = ('https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/'
+                    'MathJax.js?config=TeX-AMS_SVG')
+
 
 autodoc_default_options = {
     'members': True,
@@ -73,7 +74,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8'
 
 # The master toctree document.
-master_doc = 'contents'
+master_doc = 'index'
 
 # General information about the project.
 project = 'scikit-learn'
@@ -105,7 +106,11 @@ exclude_patterns = ['_build', 'templates', 'includes', 'themes']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
-default_role = 'literal'
+# sklearn uses a custom extension: `custom_references_resolver` to modify
+# the order of link resolution for the 'any' role. It resolves python class
+# links first before resolving 'std' domain links. Unresolved roles are
+# considered to be <code> blocks.
+default_role = 'any'
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = False
@@ -129,13 +134,14 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = 'scikit-learn-modern'
+html_theme = 'scikit-learn'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {'google_analytics': True,
-                      'mathjax_path': mathjax_path}
+html_theme_options = {'oldversion': False, 'collapsiblesidebar': True,
+                      'google_analytics': True, 'surveybanner': False,
+                      'sprintbanner': True, 'body_max_width': None}
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = ['themes']
@@ -171,8 +177,7 @@ html_static_path = ['images']
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-html_additional_pages = {'index': 'index.html',
-                         'documentation': 'documentation.html'}
+#html_additional_pages = {}
 
 # If false, no module index is generated.
 html_domain_indices = False
@@ -216,7 +221,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass
 # [howto/manual]).
-latex_documents = [('contents', 'user_guide.tex', 'scikit-learn user guide',
+latex_documents = [('index', 'user_guide.tex', 'scikit-learn user guide',
                     'scikit-learn developers', 'manual'), ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -242,35 +247,12 @@ intersphinx_mapping = {
     'joblib': ('https://joblib.readthedocs.io/en/latest/', None),
 }
 
-if 'dev' in version:
-    binder_branch = 'master'
-else:
-    match = re.match(r'^(\d+)\.(\d+)(?:\.\d+)?$', version)
-    if match is None:
-        raise ValueError(
-            'Ill-formed version: {!r}. Expected either '
-            "a version containing 'dev' "
-            'or a version like X.Y or X.Y.Z.'.format(version))
-
-    major, minor = match.groups()
-    binder_branch = '{}.{}.X'.format(major, minor)
-
 sphinx_gallery_conf = {
     'doc_module': 'sklearn',
     'backreferences_dir': os.path.join('modules', 'generated'),
     'show_memory': True,
     'reference_url': {
-        'sklearn': None},
-    'examples_dirs': ['../examples'],
-    'gallery_dirs': ['auto_examples'],
-    'binder': {
-        'org': 'scikit-learn',
-        'repo': 'scikit-learn',
-        'binderhub_url': 'https://mybinder.org',
-        'branch': binder_branch,
-        'dependencies': './binder/requirements.txt',
-        'use_jupyter_lab': True
-    }
+        'sklearn': None}
 }
 
 
@@ -278,7 +260,11 @@ sphinx_gallery_conf = {
 # thumbnails for the front page of the scikit-learn home page.
 # key: first image in set
 # values: (number of plot in set, height of thumbnail)
-carousel_thumbs = {'sphx_glr_plot_classifier_comparison_001.png': 600}
+carousel_thumbs = {'sphx_glr_plot_classifier_comparison_001.png': 600,
+                   'sphx_glr_plot_anomaly_comparison_001.png': 372,
+                   'sphx_glr_plot_gpr_co2_001.png': 350,
+                   'sphx_glr_plot_adaboost_twoclass_001.png': 372,
+                   'sphx_glr_plot_compare_methods_001.png': 349}
 
 
 # enable experimental module so that experimental estimators can be
@@ -309,6 +295,8 @@ issues_github_path = 'scikit-learn/scikit-learn'
 
 def setup(app):
     # to hide/show the prompt in code examples:
+    app.add_javascript('js/copybutton.js')
+    app.add_javascript('js/extra.js')
     app.connect('build-finished', make_carousel_thumbs)
 
 

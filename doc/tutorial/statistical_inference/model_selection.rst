@@ -262,7 +262,9 @@ parameter automatically by cross-validation::
 
     >>> from sklearn import linear_model, datasets
     >>> lasso = linear_model.LassoCV()
-    >>> X_diabetes, y_diabetes = datasets.load_diabetes(return_X_y=True)
+    >>> diabetes = datasets.load_diabetes()
+    >>> X_diabetes = diabetes.data
+    >>> y_diabetes = diabetes.target
     >>> lasso.fit(X_diabetes, y_diabetes)
     LassoCV()
     >>> # The estimator chose automatically its lambda:

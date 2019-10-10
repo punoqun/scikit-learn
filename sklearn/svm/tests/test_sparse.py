@@ -9,7 +9,7 @@ from sklearn.datasets import make_classification, load_digits, make_blobs
 from sklearn.svm.tests import test_svm
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils.extmath import safe_sparse_dot
-from sklearn.utils.testing import (assert_warns,
+from sklearn.utils.testing import (assert_raises, assert_warns,
                                    assert_raise_message, ignore_warnings,
                                    skip_if_32bit)
 
@@ -189,17 +189,14 @@ def test_sparse_decision_function():
 def test_error():
     # Test that it gives proper exception on deficient input
     # impossible value of C
-    with pytest.raises(ValueError):
-        svm.SVC(C=-1).fit(X, Y)
+    assert_raises(ValueError, svm.SVC(C=-1).fit, X, Y)
 
     # impossible value of nu
     clf = svm.NuSVC(nu=0.0)
-    with pytest.raises(ValueError):
-        clf.fit(X_sp, Y)
+    assert_raises(ValueError, clf.fit, X_sp, Y)
 
     Y2 = Y[:-1]  # wrong dimensions for labels
-    with pytest.raises(ValueError):
-        clf.fit(X_sp, Y2)
+    assert_raises(ValueError, clf.fit, X_sp, Y2)
 
     clf = svm.SVC()
     clf.fit(X_sp, Y)

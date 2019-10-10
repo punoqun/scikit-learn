@@ -11,6 +11,8 @@ import pytest
 
 from sklearn.utils.testing import assert_array_equal
 from sklearn.utils.testing import assert_array_almost_equal
+from sklearn.utils.testing import assert_raises
+from sklearn.utils.testing import assert_raises_regex
 from sklearn.utils.testing import fails_if_pypy
 
 import sklearn
@@ -105,8 +107,7 @@ def test_load_svmlight_file_n_features():
         assert X[i, j] == val
 
     # 21 features in file
-    with pytest.raises(ValueError):
-        load_svmlight_file(datafile, n_features=20)
+    assert_raises(ValueError, load_svmlight_file, datafile, n_features=20)
 
 
 def test_load_compressed():
@@ -138,19 +139,16 @@ def test_load_compressed():
 
 
 def test_load_invalid_file():
-    with pytest.raises(ValueError):
-        load_svmlight_file(invalidfile)
+    assert_raises(ValueError, load_svmlight_file, invalidfile)
 
 
 def test_load_invalid_order_file():
-    with pytest.raises(ValueError):
-        load_svmlight_file(invalidfile2)
+    assert_raises(ValueError, load_svmlight_file, invalidfile2)
 
 
 def test_load_zero_based():
     f = BytesIO(b"-1 4:1.\n1 0:1\n")
-    with pytest.raises(ValueError):
-        load_svmlight_file(f, zero_based=False)
+    assert_raises(ValueError, load_svmlight_file, f, zero_based=False)
 
 
 def test_load_zero_based_auto():
@@ -199,20 +197,18 @@ def test_load_large_qid():
 
 
 def test_load_invalid_file2():
-    with pytest.raises(ValueError):
-        load_svmlight_files([datafile, invalidfile, datafile])
+    assert_raises(ValueError, load_svmlight_files,
+                  [datafile, invalidfile, datafile])
 
 
 def test_not_a_filename():
     # in python 3 integers are valid file opening arguments (taken as unix
     # file descriptors)
-    with pytest.raises(TypeError):
-        load_svmlight_file(.42)
+    assert_raises(TypeError, load_svmlight_file, .42)
 
 
 def test_invalid_filename():
-    with pytest.raises(IOError):
-        load_svmlight_file("trou pic nic douille")
+    assert_raises(IOError, load_svmlight_file, "trou pic nic douille")
 
 
 def test_dump():
@@ -346,8 +342,8 @@ def test_dump_comment():
     # XXX we have to update this to support Python 3.x
     utf8_comment = b"It is true that\n\xc2\xbd\xc2\xb2 = \xc2\xbc"
     f = BytesIO()
-    with pytest.raises(UnicodeDecodeError):
-        dump_svmlight_file(X, y, f, comment=utf8_comment)
+    assert_raises(UnicodeDecodeError,
+                  dump_svmlight_file, X, y, f, comment=utf8_comment)
 
     unicode_comment = utf8_comment.decode("utf-8")
     f = BytesIO()
@@ -359,8 +355,8 @@ def test_dump_comment():
     assert_array_almost_equal(y, y2)
 
     f = BytesIO()
-    with pytest.raises(ValueError):
-        dump_svmlight_file(X, y, f, comment="I've got a \0.")
+    assert_raises(ValueError,
+                  dump_svmlight_file, X, y, f, comment="I've got a \0.")
 
 
 def test_dump_invalid():
@@ -368,12 +364,10 @@ def test_dump_invalid():
 
     f = BytesIO()
     y2d = [y]
-    with pytest.raises(ValueError):
-        dump_svmlight_file(X, y2d, f)
+    assert_raises(ValueError, dump_svmlight_file, X, y2d, f)
 
     f = BytesIO()
-    with pytest.raises(ValueError):
-        dump_svmlight_file(X, y[:-1], f)
+    assert_raises(ValueError, dump_svmlight_file, X, y[:-1], f)
 
 
 def test_dump_query_id():
@@ -517,5 +511,5 @@ def test_load_offset_exhaustive_splits():
 
 
 def test_load_with_offsets_error():
-    with pytest.raises(ValueError, match="n_features is required"):
-        load_svmlight_file(datafile, offset=3, length=3)
+    assert_raises_regex(ValueError, "n_features is required",
+                        load_svmlight_file, datafile, offset=3, length=3)

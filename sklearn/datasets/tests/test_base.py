@@ -29,6 +29,7 @@ from sklearn.datasets.tests.test_common import check_return_X_y
 
 from sklearn.externals._pilutil import pillow_installed
 
+from sklearn.utils.testing import assert_raises
 from sklearn.utils import IS_PYPY
 
 
@@ -168,8 +169,8 @@ def test_load_sample_image():
 
 def test_load_missing_sample_image_error():
     if pillow_installed:
-        with pytest.raises(AttributeError):
-            load_sample_image('blop.jpg')
+        assert_raises(AttributeError, load_sample_image,
+                      'blop.jpg')
     else:
         warnings.warn("Could not load sample images, PIL is not available.")
 

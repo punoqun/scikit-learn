@@ -4,7 +4,6 @@ Tests for the birch clustering algorithm.
 
 from scipy import sparse
 import numpy as np
-import pytest
 
 from sklearn.cluster.tests.common import generate_clustered_data
 from sklearn.cluster.birch import Birch
@@ -17,6 +16,7 @@ from sklearn.metrics import pairwise_distances_argmin, v_measure_score
 from sklearn.utils.testing import assert_almost_equal
 from sklearn.utils.testing import assert_array_equal
 from sklearn.utils.testing import assert_array_almost_equal
+from sklearn.utils.testing import assert_raises
 from sklearn.utils.testing import assert_warns
 
 
@@ -87,8 +87,7 @@ def test_n_clusters():
     # Test that the wrong global clustering step raises an Error.
     clf = ElasticNet()
     brc3 = Birch(n_clusters=clf)
-    with pytest.raises(ValueError):
-        brc3.fit(X)
+    assert_raises(ValueError, brc3.fit, X)
 
     # Test that a small number of clusters raises a warning.
     brc4 = Birch(threshold=10000.)
@@ -135,8 +134,7 @@ def test_branching_factor():
 
     # Raises error when branching_factor is set to one.
     brc = Birch(n_clusters=None, branching_factor=1, threshold=0.01)
-    with pytest.raises(ValueError):
-        brc.fit(X)
+    assert_raises(ValueError, brc.fit, X)
 
 
 def check_threshold(birch_instance, threshold):

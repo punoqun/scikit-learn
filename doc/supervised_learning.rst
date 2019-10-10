@@ -6,7 +6,6 @@ Supervised learning
 -----------------------
 
 .. toctree::
-    :maxdepth: 2
 
     modules/linear_model
     modules/lda_qda.rst

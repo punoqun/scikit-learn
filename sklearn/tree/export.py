@@ -11,6 +11,7 @@ This module defines export functions for decision trees.
 #          Li Li <aiki.nogard@gmail.com>
 #          Giuseppe Vettigli <vettigli@gmail.com>
 # License: BSD 3 clause
+import warnings
 from io import StringIO
 
 from numbers import Integral
@@ -18,7 +19,6 @@ from numbers import Integral
 import numpy as np
 
 from ..utils.validation import check_is_fitted
-from ..base import is_classifier
 
 from . import _criterion
 from . import _tree
@@ -68,7 +68,7 @@ def _color_brew(n):
     return color_list
 
 
-class Sentinel:
+class Sentinel(object):
     def __repr__(self):
         return '"tree.dot"'
 
@@ -97,7 +97,7 @@ def plot_tree(decision_tree, max_depth=None, feature_names=None,
     Parameters
     ----------
     decision_tree : decision tree regressor or classifier
-        The decision tree to be plotted.
+        The decision tree to be exported to GraphViz.
 
     max_depth : int, optional (default=None)
         The maximum depth of the representation. If None, the tree is fully
@@ -177,7 +177,7 @@ def plot_tree(decision_tree, max_depth=None, feature_names=None,
     return exporter.export(decision_tree, ax=ax)
 
 
-class _BaseTreeExporter:
+class _BaseTreeExporter(object):
     def __init__(self, max_depth=None, feature_names=None,
                  class_names=None, label='all', filled=False,
                  impurity=True, node_ids=False,
@@ -743,7 +743,7 @@ def export_graphviz(decision_tree, out_file=None, max_depth=None,
     'digraph Tree {...
     """
 
-    check_is_fitted(decision_tree)
+    check_is_fitted(decision_tree, 'tree_')
     own_file = False
     return_string = False
     try:
@@ -849,10 +849,9 @@ def export_text(decision_tree, feature_names=None, max_depth=10,
     |   |--- petal width (cm) >  1.75
     |   |   |--- class: 2
     """
-    check_is_fitted(decision_tree)
+    check_is_fitted(decision_tree, 'tree_')
     tree_ = decision_tree.tree_
-    if is_classifier(decision_tree):
-        class_names = decision_tree.classes_
+    class_names = decision_tree.classes_
     right_child_fmt = "{} {} <= {}\n"
     left_child_fmt = "{} {} >  {}\n"
     truncation_fmt = "{} {}\n"

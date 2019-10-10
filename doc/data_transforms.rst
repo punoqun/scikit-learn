@@ -24,7 +24,6 @@ transformations of the target space (e.g. categorical labels) for use in
 scikit-learn.
 
 .. toctree::
-    :maxdepth: 2
 
     modules/compose
     modules/feature_extraction

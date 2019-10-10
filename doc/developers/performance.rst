@@ -403,7 +403,11 @@ kcachegrind
 Multi-core parallelism using ``joblib.Parallel``
 ================================================
 
-See `joblib documentation <https://joblib.readthedocs.io>`_
+TODO: give a simple teaser example here.
+
+Checkout the official joblib documentation:
+
+- https://joblib.readthedocs.io
 
 
 .. _warm-restarts:

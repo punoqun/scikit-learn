@@ -13,21 +13,24 @@ cdef float EPSILON_DBL = 1e-8
 cdef float PERPLEXITY_TOLERANCE = 1e-5
 
 cpdef np.ndarray[np.float32_t, ndim=2] _binary_search_perplexity(
-        np.ndarray[np.float32_t, ndim=2] sqdistances,
+        np.ndarray[np.float32_t, ndim=2] affinities,
+        np.ndarray[np.int64_t, ndim=2] neighbors,
         float desired_perplexity,
         int verbose):
     """Binary search for sigmas of conditional Gaussians.
 
     This approximation reduces the computational complexity from O(N^2) to
-    O(uN).
+    O(uN). See the exact method '_binary_search_perplexity' for more details.
 
     Parameters
     ----------
-    sqdistances : array-like, shape (n_samples, n_neighbors)
-        Distances between training samples and their k nearest neighbors.
-        When using the exact method, this is a square (n_samples, n_samples)
-        distance matrix. The TSNE default metric is "euclidean" which is
-        interpreted as squared euclidean distance.
+    affinities : array-like, shape (n_samples, k)
+        Distances between training samples and its k nearest neighbors.
+
+    neighbors : array-like, shape (n_samples, k) or None
+        Each row contains the indices to the k nearest neigbors. If this
+        array is None, then the perplexity is estimated over all data
+        not just the nearest neighbors.
 
     desired_perplexity : float
         Desired perplexity (2^entropy) of the conditional Gaussians.
@@ -43,9 +46,7 @@ cpdef np.ndarray[np.float32_t, ndim=2] _binary_search_perplexity(
     # Maximum number of binary search steps
     cdef long n_steps = 100
 
-    cdef long n_samples = sqdistances.shape[0]
-    cdef long n_neighbors = sqdistances.shape[1]
-    cdef int using_neighbors = n_neighbors < n_samples
+    cdef long n_samples = affinities.shape[0]
     # Precisions of conditional Gaussian distributions
     cdef float beta
     cdef float beta_min
@@ -60,6 +61,11 @@ cpdef np.ndarray[np.float32_t, ndim=2] _binary_search_perplexity(
     cdef float sum_Pi
     cdef float sum_disti_Pi
     cdef long i, j, k, l
+    cdef long n_neighbors = n_samples
+    cdef int using_neighbors = neighbors is not None
+
+    if using_neighbors:
+        n_neighbors = neighbors.shape[1]
 
     # This array is later used as a 32bit array. It has multiple intermediate
     # floating point additions that benefit from the extra precision
@@ -79,7 +85,7 @@ cpdef np.ndarray[np.float32_t, ndim=2] _binary_search_perplexity(
             sum_Pi = 0.0
             for j in range(n_neighbors):
                 if j != i or using_neighbors:
-                    P[i, j] = math.exp(-sqdistances[i, j] * beta)
+                    P[i, j] = math.exp(-affinities[i, j] * beta)
                     sum_Pi += P[i, j]
 
             if sum_Pi == 0.0:
@@ -88,7 +94,7 @@ cpdef np.ndarray[np.float32_t, ndim=2] _binary_search_perplexity(
 
             for j in range(n_neighbors):
                 P[i, j] /= sum_Pi
-                sum_disti_Pi += sqdistances[i, j] * P[i, j]
+                sum_disti_Pi += affinities[i, j] * P[i, j]
 
             entropy = math.log(sum_Pi) + beta * sum_disti_Pi
             entropy_diff = entropy - desired_entropy

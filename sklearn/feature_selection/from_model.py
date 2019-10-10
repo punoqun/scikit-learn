@@ -78,7 +78,7 @@ def _calculate_threshold(estimator, importances, threshold):
     return threshold
 
 
-class SelectFromModel(MetaEstimatorMixin, SelectorMixin, BaseEstimator):
+class SelectFromModel(BaseEstimator, SelectorMixin, MetaEstimatorMixin):
     """Meta-transformer for selecting features based on importance weights.
 
     .. versionadded:: 0.17

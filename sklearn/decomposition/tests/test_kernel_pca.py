@@ -3,7 +3,7 @@ import scipy.sparse as sp
 import pytest
 
 from sklearn.utils.testing import (assert_array_almost_equal,
-                                   assert_allclose)
+                                   assert_raises, assert_allclose)
 
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.datasets import make_circles
@@ -53,8 +53,8 @@ def test_kernel_pca():
 
 
 def test_kernel_pca_invalid_parameters():
-    with pytest.raises(ValueError):
-        KernelPCA(10, fit_inverse_transform=True, kernel='precomputed')
+    assert_raises(ValueError, KernelPCA, 10, fit_inverse_transform=True,
+                  kernel='precomputed')
 
 
 def test_kernel_pca_consistent_transform():
@@ -210,8 +210,7 @@ def test_kernel_pca_invalid_kernel():
     rng = np.random.RandomState(0)
     X_fit = rng.random_sample((2, 4))
     kpca = KernelPCA(kernel="tototiti")
-    with pytest.raises(ValueError):
-        kpca.fit(X_fit)
+    assert_raises(ValueError, kpca.fit, X_fit)
 
 
 # 0.23. warning about tol not having its correct default value.

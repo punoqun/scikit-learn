@@ -911,7 +911,7 @@ class SparseCodingMixin(TransformerMixin):
             Transformed data
 
         """
-        check_is_fitted(self)
+        check_is_fitted(self, 'components_')
 
         X = check_array(X)
 
@@ -932,7 +932,7 @@ class SparseCodingMixin(TransformerMixin):
         return code
 
 
-class SparseCoder(SparseCodingMixin, BaseEstimator):
+class SparseCoder(BaseEstimator, SparseCodingMixin):
     """Sparse coding
 
     Finds a sparse representation of data against a fixed, precomputed
@@ -1045,7 +1045,7 @@ class SparseCoder(SparseCodingMixin, BaseEstimator):
         return self
 
 
-class DictionaryLearning(SparseCodingMixin, BaseEstimator):
+class DictionaryLearning(BaseEstimator, SparseCodingMixin):
     """Dictionary learning
 
     Finds a dictionary (a set of atoms) that can best be used to represent data
@@ -1241,7 +1241,7 @@ class DictionaryLearning(SparseCodingMixin, BaseEstimator):
         return self
 
 
-class MiniBatchDictionaryLearning(SparseCodingMixin, BaseEstimator):
+class MiniBatchDictionaryLearning(BaseEstimator, SparseCodingMixin):
     """Mini-batch dictionary learning
 
     Finds a dictionary (a set of atoms) that can best be used to represent data
@@ -1359,14 +1359,6 @@ class MiniBatchDictionaryLearning(SparseCodingMixin, BaseEstimator):
 
     n_iter_ : int
         Number of iterations run.
-
-    iter_offset_ : int
-        The number of iteration on data batches that has been
-        performed before.
-
-    random_state_ : RandomState
-        RandomState instance that is generated either from a seed, the random
-        number generattor or by `np.random`.
 
     Notes
     -----

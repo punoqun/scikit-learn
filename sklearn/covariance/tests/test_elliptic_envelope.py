@@ -3,9 +3,8 @@ Testing for Elliptic Envelope algorithm (sklearn.covariance.elliptic_envelope).
 """
 
 import numpy as np
-import pytest
-
 from sklearn.covariance import EllipticEnvelope
+from sklearn.utils.testing import assert_raises
 from sklearn.utils.testing import assert_almost_equal
 from sklearn.utils.testing import assert_array_almost_equal
 from sklearn.utils.testing import assert_array_equal
@@ -16,10 +15,8 @@ def test_elliptic_envelope():
     rnd = np.random.RandomState(0)
     X = rnd.randn(100, 10)
     clf = EllipticEnvelope(contamination=0.1)
-    with pytest.raises(NotFittedError):
-        clf.predict(X)
-    with pytest.raises(NotFittedError):
-        clf.decision_function(X)
+    assert_raises(NotFittedError, clf.predict, X)
+    assert_raises(NotFittedError, clf.decision_function, X)
     clf.fit(X)
     y_pred = clf.predict(X)
     scores = clf.score_samples(X)

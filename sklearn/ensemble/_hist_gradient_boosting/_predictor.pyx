@@ -7,16 +7,15 @@
 
 cimport cython
 from cython.parallel import prange
-from libc.math cimport isnan
 import numpy as np
 cimport numpy as np
 from numpy.math cimport INFINITY
 
-from .common cimport X_DTYPE_C
-from .common cimport Y_DTYPE_C
-from .common import Y_DTYPE
-from .common cimport X_BINNED_DTYPE_C
-from .common cimport node_struct
+from .types cimport X_DTYPE_C
+from .types cimport Y_DTYPE_C
+from .types import Y_DTYPE
+from .types cimport X_BINNED_DTYPE_C
+from .types cimport node_struct
 
 
 def _predict_from_numeric_data(
@@ -44,12 +43,10 @@ cdef inline Y_DTYPE_C _predict_one_from_numeric_data(
     while True:
         if node.is_leaf:
             return node.value
-
-        if isnan(numeric_data[row, node.feature_idx]):
-            if node.missing_go_to_left:
-                node = nodes[node.left]
-            else:
-                node = nodes[node.right]
+        if numeric_data[row, node.feature_idx] == INFINITY:
+            # if data is +inf we always go to the right child, even when the
+            # threshold is +inf
+            node = nodes[node.right]
         else:
             if numeric_data[row, node.feature_idx] <= node.threshold:
                 node = nodes[node.left]
@@ -60,7 +57,6 @@ cdef inline Y_DTYPE_C _predict_one_from_numeric_data(
 def _predict_from_binned_data(
         node_struct [:] nodes,
         const X_BINNED_DTYPE_C [:, :] binned_data,
-        const unsigned char missing_values_bin_idx,
         Y_DTYPE_C [:] out):
 
     cdef:
@@ -73,8 +69,7 @@ def _predict_from_binned_data(
 cdef inline Y_DTYPE_C _predict_one_from_binned_data(
         node_struct [:] nodes,
         const X_BINNED_DTYPE_C [:, :] binned_data,
-        const int row,
-        const unsigned char missing_values_bin_idx) nogil:
+        const int row) nogil:
     # Need to pass the whole array and the row index, else prange won't work.
     # See issue Cython #2798
 
@@ -84,16 +79,10 @@ cdef inline Y_DTYPE_C _predict_one_from_binned_data(
     while True:
         if node.is_leaf:
             return node.value
-        if binned_data[row, node.feature_idx] ==  missing_values_bin_idx:
-            if node.missing_go_to_left:
-                node = nodes[node.left]
-            else:
-                node = nodes[node.right]
+        if binned_data[row, node.feature_idx] <= node.bin_threshold:
+            node = nodes[node.left]
         else:
-            if binned_data[row, node.feature_idx] <= node.bin_threshold:
-                node = nodes[node.left]
-            else:
-                node = nodes[node.right]
+            node = nodes[node.right]
 ################################################################
 def _predict_from_numeric_data_multi(
         node_struct [:] nodes,
