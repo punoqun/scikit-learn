@@ -31,4 +31,4 @@ cdef packed struct node_struct:
     unsigned int depth
     unsigned char is_leaf
     X_BINNED_DTYPE_C bin_threshold
-    Y_DTYPE_C residual
+    Y_DTYPE_C *residual

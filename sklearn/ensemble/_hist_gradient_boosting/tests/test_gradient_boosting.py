@@ -8,6 +8,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.ensemble._hist_gradient_boosting.binning import _BinMapper
 from sklearn.utils import shuffle
+import pandas as pd
 
 
 X_classification, y_classification = make_classification(random_state=0)
@@ -67,7 +68,7 @@ def test_early_stopping_regression(scoring, validation_fraction,
 
     max_iter = 200
 
-    X, y = make_regression(n_samples=50, random_state=0, n_targets=1)
+    X, y = make_regression(n_samples=50, random_state=0, n_targets=4)
 
     gb = HistGradientBoostingRegressor(
         verbose=1,  # just for coverage
@@ -80,8 +81,8 @@ def test_early_stopping_regression(scoring, validation_fraction,
         random_state=0
     )
     gb.fit(X, y)
-    gb.predict(X)
-    # print('this is the preds' + str(np.shape(gb.predict_multi(X, np.shape(y)[1]))))
+    # gb.predict(X)
+    pd.DataFrame(gb.predict_multi(X, np.shape(y)[1])).to_csv('/home/Kenny/PycharmProjects/FreshStartReg/preds.csv')
     if n_iter_no_change is not None:
         assert n_iter_no_change <= gb.n_iter_ < max_iter
     else:

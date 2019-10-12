@@ -21,6 +21,7 @@ from .binning import _BinMapper
 from .grower import TreeGrower
 from .loss import _LOSSES
 
+import pandas as pd
 
 class BaseHistGradientBoosting(BaseEstimator, ABC):
     """Base class for histogram-based gradient boosting estimators."""
@@ -144,7 +145,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             if not (self._is_fitted() and self.warm_start):
                 self._train_val_split_seed = rng.randint(1024)
 
-            X_train, X_val, y_train, y_val = train_test_split(
+            X_train, X_val, y_train, y_val= train_test_split(
                 X, y, test_size=self.validation_fraction, stratify=stratify,
                 random_state=self._train_val_split_seed)
         else:
@@ -325,6 +326,9 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             self.loss_.update_gradients_and_hessians(gradients, hessians,
                                                      y_train, raw_predictions)
 
+            self.loss_.update_gradients_and_hessians(multi_gradients, multi_hessians,
+                                                     y_train, multi_raw_predictions)
+
             # Append a list since there may be more than 1 predictor per iter
             predictors.append([])
 
@@ -348,8 +352,9 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 if multi_output:
                     for leaf in grower.finalized_leaves:
                         leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
-                        leaf.residual = -grower.shrinkage * leaf.sum_residuals / (
-                                leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps)
+                        leaf.residual = np.asanyarray(-grower.shrinkage * leaf.sum_residuals / (
+                                leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps))
+
                     # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
                     # print(X[:,leaf.parent.split_info.feature_idx])
                     # print('leaf value:' + str(leaf.value))           #prediction value
@@ -883,6 +888,7 @@ class HistGradientBoostingRegressor(BaseHistGradientBoosting, RegressorMixin):
         # Return raw predictions after converting shape
         # (n_samples, 1) to (n_samples,)
         return self._raw_predict_multi(X, shape_y).ravel()
+
 
     def _encode_y(self, y):
         # Just convert y to the expected dtype

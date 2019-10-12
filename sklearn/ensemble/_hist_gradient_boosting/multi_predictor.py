@@ -1,95 +1,63 @@
-# cython: cdivision=True
-# cython: boundscheck=False
-# cython: wraparound=False
-# cython: language_level=3
-
-# Author: Nicolas Hug
-
-cimport cython
-from cython.parallel import prange
+from numpy.matlib import Infinity
 import numpy as np
-cimport numpy as np
-from numpy.math cimport INFINITY
+import pandas as pd
 
-from .types cimport X_DTYPE_C
-from .types cimport Y_DTYPE_C
-from .types import Y_DTYPE
-from .types cimport X_BINNED_DTYPE_C
-from .types cimport node_struct
-
-
-def _predict_from_numeric_data(
-        node_struct [:] nodes,
-        const X_DTYPE_C [:, :] numeric_data,
-        Y_DTYPE_C [:] out):
-
-    cdef:
-        int i
-
-    for i in prange(numeric_data.shape[0], schedule='static', nogil=True):
-        out[i] = _predict_one_from_numeric_data(nodes, numeric_data, i)
+'''
+    Y_DTYPE_C value
+    unsigned int count
+    unsigned int feature_idx
+    X_DTYPE_C threshold
+    unsigned int left
+    unsigned int right
+    Y_DTYPE_C gain
+    unsigned int depth
+    unsigned char is_leaf
+    X_BINNED_DTYPE_C bin_threshold
+    (0., 45, 97, -1.20557172, 1, 4, 2226097.70552018, 0, 0, 12, 0.)
+    '''
 
 
-cdef inline Y_DTYPE_C _predict_one_from_numeric_data(
-        node_struct [:] nodes,
-        const X_DTYPE_C [:, :] numeric_data,
-        const int row) nogil:
-    # Need to pass the whole array and the row index, else prange won't work.
-    # See issue Cython #2798
+def _predict_from_numeric_data_multi(nodes, X, out):
+    for tmp_iter in range(X.shape[0]):
+        out[tmp_iter] = _predict_one_from_numeric_data_multi(nodes, X, tmp_iter)
+    print('x')
 
-    cdef:
-        node_struct node = nodes[0]
 
+def _predict_one_from_numeric_data_multi(nodes, numeric_data, row):
+    node = nodes[0]
     while True:
-        if node.is_leaf:
-            return node.value
-        if numeric_data[row, node.feature_idx] == INFINITY:
+        if node['is_leaf']:
+            print('wtf'+str(node['residual']))
+            return node['residual']
+        if numeric_data[row, node['feature_idx']] == Infinity:
             # if data is +inf we always go to the right child, even when the
             # threshold is +inf
-            node = nodes[node.right]
+            node = nodes[node['right']]
         else:
-            if numeric_data[row, node.feature_idx] <= node.threshold:
-                node = nodes[node.left]
+            if numeric_data[row, node['feature_idx']] <= node['threshold']:
+                node = nodes[node['left']]
             else:
-                node = nodes[node.right]
+                node = nodes[node['right']]
 
 
-def _predict_from_binned_data(
-        node_struct [:] nodes,
-        const X_BINNED_DTYPE_C [:, :] binned_data,
-        Y_DTYPE_C [:] out):
-
-    cdef:
-        int i
-
-    for i in prange(binned_data.shape[0], schedule='static', nogil=True):
-        out[i] = _predict_one_from_binned_data(nodes, binned_data, i)
+def _predict_from_binned_data_multi(nodes, binned_data, out):
+    for i in range(binned_data.shape[0]):
+        out[i, :] = _predict_one_from_binned_data_multi(nodes, binned_data, i)
 
 
-cdef inline Y_DTYPE_C _predict_one_from_binned_data(
-        node_struct [:] nodes,
-        const X_BINNED_DTYPE_C [:, :] binned_data,
-        const int row) nogil:
-    # Need to pass the whole array and the row index, else prange won't work.
-    # See issue Cython #2798
-
-    cdef:
-        node_struct node = nodes[0]
-
+def _predict_one_from_binned_data_multi(nodes, binned_data, row):
+    node = nodes[0]
     while True:
-        if node.is_leaf:
-            return node.value
-        if binned_data[row, node.feature_idx] <= node.bin_threshold:
-            node = nodes[node.left]
+        if node['is_leaf']:
+            print('wtf'+str(node['residual']))
+            return node['residual']
+        if binned_data[row, node['feature_idx']] <= node['bin_threshold']:
+            node = nodes[node['left']]
         else:
-            node = nodes[node.right]
+            node = nodes[node['right']]
 
 
-def _compute_partial_dependence(
-    node_struct [:] nodes,
-    const X_DTYPE_C [:, ::1] X,
-    int [:] target_features,
-    Y_DTYPE_C [:] out):
+def _compute_partial_dependence_multi(nodes, X, target_features, out):
     """Partial dependence of the response on the ``target_features`` set.
 
     For each sample in ``X`` a tree traversal is performed.
@@ -120,21 +88,12 @@ def _compute_partial_dependence(
         point.
     """
 
-    cdef:
-        unsigned int current_node_idx
-        unsigned int [:] node_idx_stack = np.zeros(shape=nodes.shape[0],
-                                                   dtype=np.uint32)
-        Y_DTYPE_C [::1] weight_stack = np.zeros(shape=nodes.shape[0],
-                                                dtype=Y_DTYPE)
-        node_struct * current_node  # pointer to avoid copying attributes
+    node_idx_stack = np.zeros(shape=nodes.shape[0],dtype=np.uint32)
+    weight_stack = np.zeros(shape=nodes.shape[0],dtype=np.float64)
 
-        unsigned int sample_idx
-        unsigned feature_idx
-        unsigned stack_size
-        Y_DTYPE_C left_sample_frac
-        Y_DTYPE_C current_weight
-        Y_DTYPE_C total_weight  # used for sanity check only
-        bint is_target_feature
+        # node_struct * current_node  # pointer to avoid copying attributes
+
+    res_row = np.zeros(shape=nodes.residual.shape[0],dtype=np.float64)
 
     for sample_idx in range(X.shape[0]):
         # init stacks for current sample
@@ -148,11 +107,12 @@ def _compute_partial_dependence(
             # pop the stack
             stack_size -= 1
             current_node_idx = node_idx_stack[stack_size]
-            current_node = &nodes[current_node_idx]
+            current_node = nodes[current_node_idx]
 
             if current_node.is_leaf:
-                out[sample_idx] += (weight_stack[stack_size] *
-                                    current_node.value)
+                res_row += list(weight_stack[stack_size] *
+                                      np.asarray(current_node.residual))
+                out[sample_idx,:]  = res_row
                 total_weight += weight_stack[stack_size]
             else:
                 # determine if the split feature is a target feature
@@ -177,8 +137,7 @@ def _compute_partial_dependence(
                     # push left child
                     node_idx_stack[stack_size] = current_node.left
                     left_sample_frac = (
-                        <Y_DTYPE_C> nodes[current_node.left].count /
-                        current_node.count)
+                        nodes[current_node.left].count / current_node.count)
                     current_weight = weight_stack[stack_size]
                     weight_stack[stack_size] = current_weight * left_sample_frac
                     stack_size += 1
@@ -191,6 +150,4 @@ def _compute_partial_dependence(
 
         # Sanity check. Should never happen.
         if not (0.999 < total_weight < 1.001):
-            raise ValueError("Total weight should be 1.0 but was %.9f" %
-                                total_weight)
-
+            raise ValueError("Total weight should be 1.0 but was %.9f" % total_weight)

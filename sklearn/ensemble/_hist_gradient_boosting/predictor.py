@@ -7,12 +7,13 @@ import numpy as np
 
 from .types import Y_DTYPE
 from ._predictor import _predict_from_numeric_data
-from ._predictor import _predict_from_numeric_data_multi
 from ._predictor import _predict_from_binned_data
+from . import multi_predictor
+from .multi_predictor import _predict_from_numeric_data_multi
+from .multi_predictor import _predict_from_binned_data_multi
+from .multi_predictor import _compute_partial_dependence_multi
 from . import _predictor
-from ._predictor import _predict_from_binned_data_multi
 from ._predictor import _compute_partial_dependence
-from ._predictor import _compute_partial_dependence_multi
 
 
 class TreePredictor:
