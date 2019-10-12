@@ -326,8 +326,9 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             self.loss_.update_gradients_and_hessians(gradients, hessians,
                                                      y_train, raw_predictions)
 
-            self.loss_.update_gradients_and_hessians(multi_gradients, multi_hessians,
-                                                     y_train, multi_raw_predictions)
+            if multi_output:
+                self.loss_.update_gradients_and_hessians(multi_gradients, multi_hessians,
+                                                         y_train, multi_raw_predictions)
 
             # Append a list since there may be more than 1 predictor per iter
             predictors.append([])
@@ -352,7 +353,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 if multi_output:
                     for leaf in grower.finalized_leaves:
                         leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
-                        leaf.residual = np.asanyarray(-grower.shrinkage * leaf.sum_residuals / (
+                        leaf.residual = np.asarray(-grower.shrinkage * leaf.sum_residuals / (
                                 leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps))
 
                     # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
@@ -366,9 +367,14 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 acc_find_split_time += grower.total_find_split_time
                 acc_compute_hist_time += grower.total_compute_hist_time
 
-                predictor = grower.make_predictor(
-                    bin_thresholds=self.bin_mapper_.bin_thresholds_
-                )
+                if multi_output:
+                    predictor = grower.make_multioutput_predictor(
+                        bin_thresholds=self.bin_mapper_.bin_thresholds_
+                    )
+                else:
+                    predictor = grower.make_predictor(
+                        bin_thresholds=self.bin_mapper_.bin_thresholds_
+                    )
                 predictors[-1].append(predictor)
 
                 # Update raw_predictions with the predictions of the newly
@@ -654,8 +660,10 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             for k, predictor in enumerate(predictors_of_ith_iteration):
                 predict = (predictor.predict_binned_multi if is_binned
                            else predictor.predict_multi)
-                raw_predictions[k, :] += predict(X, shape_y)
+                idk = predict(X, shape_y)
+                raw_predictions[k, :, :] += predict(X, shape_y)
 
+        kkk = raw_predictions
         return raw_predictions
 
     def _compute_partial_dependence_recursion(self, grid, target_features):
@@ -887,7 +895,7 @@ class HistGradientBoostingRegressor(BaseHistGradientBoosting, RegressorMixin):
         """
         # Return raw predictions after converting shape
         # (n_samples, 1) to (n_samples,)
-        return self._raw_predict_multi(X, shape_y).ravel()
+        return self._raw_predict_multi(X, shape_y)
 
 
     def _encode_y(self, y):

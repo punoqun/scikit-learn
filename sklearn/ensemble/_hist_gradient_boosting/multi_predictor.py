@@ -20,14 +20,12 @@ import pandas as pd
 def _predict_from_numeric_data_multi(nodes, X, out):
     for tmp_iter in range(X.shape[0]):
         out[tmp_iter] = _predict_one_from_numeric_data_multi(nodes, X, tmp_iter)
-    print('x')
 
 
 def _predict_one_from_numeric_data_multi(nodes, numeric_data, row):
     node = nodes[0]
     while True:
         if node['is_leaf']:
-            print('wtf'+str(node['residual']))
             return node['residual']
         if numeric_data[row, node['feature_idx']] == Infinity:
             # if data is +inf we always go to the right child, even when the
@@ -42,7 +40,7 @@ def _predict_one_from_numeric_data_multi(nodes, numeric_data, row):
 
 def _predict_from_binned_data_multi(nodes, binned_data, out):
     for i in range(binned_data.shape[0]):
-        out[i, :] = _predict_one_from_binned_data_multi(nodes, binned_data, i)
+        out[i] = _predict_one_from_binned_data_multi(nodes, binned_data, i)
 
 
 def _predict_one_from_binned_data_multi(nodes, binned_data, row):
@@ -136,8 +134,7 @@ def _compute_partial_dependence_multi(nodes, X, target_features, out):
 
                     # push left child
                     node_idx_stack[stack_size] = current_node.left
-                    left_sample_frac = (
-                        nodes[current_node.left].count / current_node.count)
+                    left_sample_frac = (nodes[current_node.left].count / current_node.count)
                     current_weight = weight_stack[stack_size]
                     weight_stack[stack_size] = current_weight * left_sample_frac
                     stack_size += 1
