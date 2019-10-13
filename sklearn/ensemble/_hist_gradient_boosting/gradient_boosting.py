@@ -145,7 +145,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             if not (self._is_fitted() and self.warm_start):
                 self._train_val_split_seed = rng.randint(1024)
 
-            X_train, X_val, y_train, y_val= train_test_split(
+            X_train, X_val, y_train, y_val = train_test_split(
                 X, y, test_size=self.validation_fraction, stratify=stratify,
                 random_state=self._train_val_split_seed)
         else:
@@ -176,14 +176,14 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             # n_trees_per_iterations is n_classes in multiclass classification,
             # else 1.
             if multi_output:
-                self._baseline_prediction = self.loss_.get_baseline_prediction(
+                self._multi_baseline_prediction = self.loss_.get_baseline_prediction(
                     non_sparse, self.n_trees_per_iteration_
                 )
                 multi_raw_predictions = np.zeros(
                     shape=(self.n_trees_per_iteration_, n_samples, np.shape(non_sparse)[1]),
-                    dtype=self._baseline_prediction.dtype
+                    dtype=self._multi_baseline_prediction.dtype
                 )
-                multi_raw_predictions += self._baseline_prediction
+                multi_raw_predictions += self._multi_baseline_prediction
                 # initialize gradients and hessians (empty arrays).
                 # shape = (n_trees_per_iteration, n_samples).
 
@@ -192,11 +192,11 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 #         n_samples=n_samples,
                 #         prediction_dim=non_srp.shape[1]
                 #     )
-                # else:
-                multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
-                    n_samples=n_samples,
-                    prediction_dim=(non_sparse.shape[1])
-                )
+                # # else:
+                # multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
+                #     n_samples=n_samples,
+                #     prediction_dim=non_sparse.shape[1]
+                # )
             self._baseline_prediction = self.loss_.get_baseline_prediction(
                 y_train, self.n_trees_per_iteration_
             )
@@ -300,11 +300,11 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 X_binned_small_train, y_small_train = self._get_small_trainset(
                     X_binned_train, y_train, self._small_trainset_seed)
 
-            # Initialize the gradients and hessians
-            multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
-                n_samples=n_samples,
-                prediction_dim=(non_sparse.shape[1])
-            )
+            # # Initialize the gradients and hessians
+            # multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
+            #     n_samples=n_samples,
+            #     prediction_dim=non_sparse.shape[1]
+            # )
             gradients, hessians = self.loss_.init_gradients_and_hessians(
                 n_samples=n_samples,
                 prediction_dim=self.n_trees_per_iteration_
@@ -326,9 +326,9 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             self.loss_.update_gradients_and_hessians(gradients, hessians,
                                                      y_train, raw_predictions)
 
-            if multi_output:
-                self.loss_.update_gradients_and_hessians(multi_gradients, multi_hessians,
-                                                         y_train, multi_raw_predictions)
+            # if multi_output:
+            #     self.loss_.update_gradients_and_hessians(multi_gradients, multi_hessians,
+            #                                              y_train, multi_raw_predictions)
 
             # Append a list since there may be more than 1 predictor per iter
             predictors.append([])
@@ -352,9 +352,10 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 # print(hessians.shape)
                 if multi_output:
                     for leaf in grower.finalized_leaves:
-                        leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
-                        leaf.residual = np.asarray(-grower.shrinkage * leaf.sum_residuals / (
-                                leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps))
+                        # leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
+                        # leaf.residual = np.asarray(-grower.shrinkage * leaf.sum_residuals / (
+                        #         leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps))
+                        leaf.residual = np.mean(a=non_sparse[leaf.sample_indices, :], axis=0)
 
                     # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
                     # print(X[:,leaf.parent.split_info.feature_idx])
@@ -652,18 +653,19 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         is_binned = getattr(self, '_in_fit', False)
         n_samples = X.shape[0]
         raw_predictions = np.zeros(
-            shape=(self.n_trees_per_iteration_, n_samples, shape_y),
-            dtype=self._baseline_prediction.dtype
+            shape=(len(self._predictors), n_samples, shape_y),
+            dtype=self._multi_baseline_prediction.dtype
         )
-        raw_predictions += self._baseline_prediction
+        raw_predictions += self._multi_baseline_prediction
+        count = 0
         for predictors_of_ith_iteration in self._predictors:
             for k, predictor in enumerate(predictors_of_ith_iteration):
                 predict = (predictor.predict_binned_multi if is_binned
                            else predictor.predict_multi)
                 idk = predict(X, shape_y)
-                raw_predictions[k, :, :] += predict(X, shape_y)
-
-        kkk = raw_predictions
+                raw_predictions[count, :, :] += predict(X, shape_y)
+                count += 1
+        kkk = np.mean(a=raw_predictions, axis=0)
         return raw_predictions
 
     def _compute_partial_dependence_recursion(self, grid, target_features):

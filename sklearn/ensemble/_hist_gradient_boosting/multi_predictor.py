@@ -19,7 +19,7 @@ import pandas as pd
 
 def _predict_from_numeric_data_multi(nodes, X, out):
     for tmp_iter in range(X.shape[0]):
-        out[tmp_iter] = _predict_one_from_numeric_data_multi(nodes, X, tmp_iter)
+        out[tmp_iter, :] = _predict_one_from_numeric_data_multi(nodes, X, tmp_iter)
 
 
 def _predict_one_from_numeric_data_multi(nodes, numeric_data, row):
@@ -40,14 +40,13 @@ def _predict_one_from_numeric_data_multi(nodes, numeric_data, row):
 
 def _predict_from_binned_data_multi(nodes, binned_data, out):
     for i in range(binned_data.shape[0]):
-        out[i] = _predict_one_from_binned_data_multi(nodes, binned_data, i)
+        out[i, :] = _predict_one_from_binned_data_multi(nodes, binned_data, i)
 
 
 def _predict_one_from_binned_data_multi(nodes, binned_data, row):
     node = nodes[0]
     while True:
         if node['is_leaf']:
-            print('wtf'+str(node['residual']))
             return node['residual']
         if binned_data[row, node['feature_idx']] <= node['bin_threshold']:
             node = nodes[node['left']]
@@ -110,7 +109,7 @@ def _compute_partial_dependence_multi(nodes, X, target_features, out):
             if current_node.is_leaf:
                 res_row += list(weight_stack[stack_size] *
                                       np.asarray(current_node.residual))
-                out[sample_idx,:]  = res_row
+                out[sample_idx] = res_row
                 total_weight += weight_stack[stack_size]
             else:
                 # determine if the split feature is a target feature
