@@ -83,6 +83,9 @@ def test_early_stopping_regression(scoring, validation_fraction,
     gb.fit(X, y)
     # gb.predict(X)
     preds = gb.predict_multi(X, np.shape(y)[1])
+    preds = np.asarray(preds)
+    np.savetxt("/home/Kenny/preds.csv", preds, delimiter=",")
+    pd.DataFrame(preds).to_csv('/home/Kenny/preds.csv',index=False)
     if n_iter_no_change is not None:
         assert n_iter_no_change <= gb.n_iter_ < max_iter
     else:

@@ -355,7 +355,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                         # leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
                         # leaf.residual = np.asarray(-grower.shrinkage * leaf.sum_residuals / (
                         #         leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps))
-                        leaf.residual = grower.shrinkage * np.mean(a=non_sparse[leaf.sample_indices, :], axis=0) / (
+                        leaf.residual = self.learning_rate * np.mean(a=non_sparse[leaf.sample_indices, :], axis=0) / (
                                 leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps)
 
 
@@ -664,11 +664,10 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             for k, predictor in enumerate(predictors_of_ith_iteration):
                 predict = (predictor.predict_binned_multi if is_binned
                            else predictor.predict_multi)
-                idkk= predict(X, shape_y)
-                raw_predictions[0, :, :] += predict(X, shape_y)
+                raw_predictions[k, :, :] += predict(X, shape_y) #[pad * pow(self.learning_rate, count) for pad in predict(X, shape_y)]
                 count += 1
         lovely = np.mean(a=raw_predictions, axis=0)
-        return raw_predictions
+        return raw_predictions[0]
 
     def _compute_partial_dependence_recursion(self, grid, target_features):
         """Fast partial dependence computation.
