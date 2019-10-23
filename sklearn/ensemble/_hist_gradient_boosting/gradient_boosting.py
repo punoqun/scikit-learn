@@ -658,7 +658,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             shape=(len(self._predictors), n_samples, shape_y),
             dtype=self._multi_baseline_prediction.dtype
         )
-        raw_predictions += self._multi_baseline_prediction
+        # raw_predictions += self._multi_baseline_prediction
         count = 0
         for predictors_of_ith_iteration in self._predictors:
             for k, predictor in enumerate(predictors_of_ith_iteration):
@@ -666,7 +666,6 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                            else predictor.predict_multi)
                 raw_predictions[k, :, :] += predict(X, shape_y) #[pad * pow(self.learning_rate, count) for pad in predict(X, shape_y)]
                 count += 1
-        lovely = np.mean(a=raw_predictions, axis=0)
         return raw_predictions[0]
 
     def _compute_partial_dependence_recursion(self, grid, target_features):
