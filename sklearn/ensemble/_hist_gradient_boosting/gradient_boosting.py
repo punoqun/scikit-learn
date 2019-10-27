@@ -658,7 +658,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             shape=(len(self._predictors), n_samples, shape_y),
             dtype=self._multi_baseline_prediction.dtype
         )
-        # raw_predictions += self._multi_baseline_prediction
+        #raw_predictions += self._multi_baseline_prediction
         count = 0
         for predictors_of_ith_iteration in self._predictors:
             for k, predictor in enumerate(predictors_of_ith_iteration):
