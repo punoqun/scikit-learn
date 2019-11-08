@@ -23,6 +23,8 @@ from .loss import _LOSSES
 
 import pandas as pd
 
+
+
 class BaseHistGradientBoosting(BaseEstimator, ABC):
     """Base class for histogram-based gradient boosting estimators."""
 
@@ -101,11 +103,11 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         acc_prediction_time = 0.
         multi_output = len(np.asarray(y).shape) == 2
         non_sparse = y
-        if multi_output:
-            y = SparseRandomProjection(n_components=1,
-                                       random_state=np.random.RandomState(42)).fit_transform(X=y)
-            y = np.ndarray.flatten(y)
-        X, y = check_X_y(X, y, dtype=[X_DTYPE], force_all_finite=False)
+        # if multi_output:
+        #     y = SparseRandomProjection(n_components=1,
+        #                                random_state=np.random.RandomState(42)).fit_transform(X=y)
+        #     y = np.ndarray.flatten(y)
+        X, y = check_X_y(X, y, dtype=[X_DTYPE], force_all_finite=False, multi_output=multi_output)
         y = self._encode_y(y)
 
         # The rng state must be preserved if warm_start is True
@@ -175,33 +177,33 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             # shape (n_trees_per_iteration, n_samples) where
             # n_trees_per_iterations is n_classes in multiclass classification,
             # else 1.
-            if multi_output:
-                self._multi_baseline_prediction = self.loss_.get_baseline_prediction(
-                    non_sparse, self.n_trees_per_iteration_
-                )
-                multi_raw_predictions = np.zeros(
-                    shape=(self.n_trees_per_iteration_, n_samples, np.shape(non_sparse)[1]),
-                    dtype=self._multi_baseline_prediction.dtype
-                )
-                multi_raw_predictions += self._multi_baseline_prediction
-                # initialize gradients and hessians (empty arrays).
-                # shape = (n_trees_per_iteration, n_samples).
-
-                # if multi_output:
-                #     gradients, hessians = self.loss_.init_gradients_and_hessians(
-                #         n_samples=n_samples,
-                #         prediction_dim=non_srp.shape[1]
-                #     )
-                # # else:
-                # multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
-                #     n_samples=n_samples,
-                #     prediction_dim=non_sparse.shape[1]
-                # )
+            # if multi_output:
+            #     self._multi_baseline_prediction = self.loss_.get_baseline_prediction(
+            #         non_sparse, self.n_trees_per_iteration_
+            #     )
+            #     multi_raw_predictions = np.zeros(
+            #         shape=(self.n_trees_per_iteration_, n_samples, np.shape(non_sparse)[1]),
+            #         dtype=self._multi_baseline_prediction.dtype
+            #     )
+            #     multi_raw_predictions += self._multi_baseline_prediction
+            #     # initialize gradients and hessians (empty arrays).
+            #     # shape = (n_trees_per_iteration, n_samples).
+            #
+            #     # if multi_output:
+            #     #     gradients, hessians = self.loss_.init_gradients_and_hessians(
+            #     #         n_samples=n_samples,
+            #     #         prediction_dim=non_srp.shape[1]
+            #     #     )
+            #     # # else:
+            #     # multi_gradients, multi_hessians = self.loss_.init_gradients_and_hessians(
+            #     #     n_samples=n_samples,
+            #     #     prediction_dim=non_sparse.shape[1]
+            #     # )
             self._baseline_prediction = self.loss_.get_baseline_prediction(
                 y_train, self.n_trees_per_iteration_
             )
             raw_predictions = np.zeros(
-                shape=(self.n_trees_per_iteration_, n_samples),
+                shape=(n_samples,y.shape[1]),
                 dtype=self._baseline_prediction.dtype
             )
             raw_predictions += self._baseline_prediction
@@ -216,9 +218,8 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             # else:
             gradients, hessians = self.loss_.init_gradients_and_hessians(
                 n_samples=n_samples,
-                prediction_dim=self.n_trees_per_iteration_
+                prediction_dim=y.shape[1]
             )
-
             # predictors is a matrix (list of lists) of TreePredictor objects
             # with shape (n_iter_, n_trees_per_iteration)
             self._predictors = predictors = []
@@ -245,8 +246,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
 
                     if self._use_validation_data:
                         raw_predictions_val = np.zeros(
-                            shape=(self.n_trees_per_iteration_,
-                                   X_binned_val.shape[0]),
+                            shape=(X_binned_val.shape[0],y.shape[1],),
                             dtype=self._baseline_prediction.dtype
                         )
 
@@ -293,7 +293,10 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             self.validation_score_ = self.validation_score_.tolist()
 
             # Compute raw predictions
-            raw_predictions = self._raw_predict(X_binned_train)
+            if multi_output:
+                raw_predictions = self._raw_predict_multi(X_binned_train, y.shape[1])
+            else:
+                raw_predictions = self._raw_predict(X_binned_train)
 
             if self.do_early_stopping_ and self.scoring != 'loss':
                 # Compute the subsample set
@@ -307,7 +310,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
             # )
             gradients, hessians = self.loss_.init_gradients_and_hessians(
                 n_samples=n_samples,
-                prediction_dim=self.n_trees_per_iteration_
+                prediction_dim=y.shape[1]
             )
 
             # Get the predictors from the previous fit
@@ -323,6 +326,7 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                       end='', flush=True)
 
             # Update gradients and hessians, inplace
+
             self.loss_.update_gradients_and_hessians(gradients, hessians,
                                                      y_train, raw_predictions)
 
@@ -332,12 +336,12 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
 
             # Append a list since there may be more than 1 predictor per iter
             predictors.append([])
-
+            proj_gradients, proj_hessians = self.randomly_project_gradients_and_hessians(gradients.T, hessians.T)
             # Build `n_trees_per_iteration` trees.
             for k in range(self.n_trees_per_iteration_):
 
                 grower = TreeGrower(
-                    X_binned_train, gradients[k, :], hessians[k, :],
+                    X_binned_train, proj_gradients, proj_hessians,
                     max_bins=self.max_bins,
                     actual_n_bins=self.bin_mapper_.actual_n_bins_,
                     max_leaf_nodes=self.max_leaf_nodes,
@@ -355,8 +359,8 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                         # leaf.sum_residuals = np.sum(multi_gradients[:, leaf.sample_indices], axis=1)
                         # leaf.residual = np.asarray(-grower.shrinkage * leaf.sum_residuals / (
                         #         leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps))
-                        leaf.residual = self.learning_rate * np.mean(a=non_sparse[leaf.sample_indices, :], axis=0) / (
-                                leaf.sum_hessians + grower.splitter.l2_regularization + np.finfo(Y_DTYPE).eps)
+                        leaf.residual = - self.learning_rate * np.sum(a=gradients[:, :], axis=0) / (
+                                leaf.sum_hessians + self.l2_regularization + np.finfo(Y_DTYPE).eps)
 
 
                     # print('y mean: ' + str(np.mean(y[leaf.sample_indices])))
@@ -383,7 +387,8 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
                 # Update raw_predictions with the predictions of the newly
                 # created tree.
                 tic_pred = time()
-                _update_raw_predictions(raw_predictions[k, :], grower)
+                # _update_raw_predictions(raw_predictions[k, :], grower)
+                raw_predictions = self.update_multi_raw_predictions(raw_predictions, grower)
                 toc_pred = time()
                 acc_prediction_time += toc_pred - tic_pred
 
@@ -439,6 +444,26 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         self.validation_score_ = np.asarray(self.validation_score_)
         del self._in_fit  # hard delete so we're sure it can't be used anymore
         return self
+
+    def randomly_project_gradients_and_hessians(self, gradients, hessians):
+        proj_g = SparseRandomProjection(n_components=1, random_state=self.random_state).fit_transform(X=gradients)
+        proj_h = SparseRandomProjection(n_components=1, random_state=self.random_state).fit_transform(X=hessians)
+        return proj_g.reshape(-1).astype(np.float32), proj_h.reshape(-1).astype(np.float32)
+
+    def update_multi_raw_predictions(self, raw_predictions, grower):
+        leaves = grower.finalized_leaves
+        partition = grower.splitter.partition
+
+        starts = np.array([leaf.partition_start for leaf in leaves],
+                          dtype=np.uint32)
+        stops = np.array([leaf.partition_stop for leaf in leaves],
+                         dtype=np.uint32)
+        residuals = np.array([leaf.residual for leaf in leaves], dtype=Y_DTYPE)
+        n_leaves = starts.shape[0]
+        for leaf_idx in range(n_leaves):
+            for position in range(starts[leaf_idx], stops[leaf_idx]):
+                raw_predictions[partition[position], :] += residuals[leaf_idx]
+        return raw_predictions
 
     def _is_fitted(self):
         return len(getattr(self, '_predictors', [])) > 0
@@ -655,18 +680,19 @@ class BaseHistGradientBoosting(BaseEstimator, ABC):
         is_binned = getattr(self, '_in_fit', False)
         n_samples = X.shape[0]
         raw_predictions = np.zeros(
-            shape=(len(self._predictors), n_samples, shape_y),
-            dtype=self._multi_baseline_prediction.dtype
+            shape=(n_samples, shape_y),
+            dtype=self._baseline_prediction.dtype
         )
-        #raw_predictions += self._multi_baseline_prediction
+        raw_predictions += self._baseline_prediction
         count = 0
         for predictors_of_ith_iteration in self._predictors:
             for k, predictor in enumerate(predictors_of_ith_iteration):
                 predict = (predictor.predict_binned_multi if is_binned
                            else predictor.predict_multi)
-                raw_predictions[k, :, :] += predict(X, shape_y) #[pad * pow(self.learning_rate, count) for pad in predict(X, shape_y)]
+                wait = predict(X, shape_y)
+                raw_predictions[:, :] += predict(X, shape_y) #[pad * pow(self.learning_rate, count) for pad in predict(X, shape_y)]
                 count += 1
-        return raw_predictions[0]
+        return raw_predictions
 
     def _compute_partial_dependence_recursion(self, grid, target_features):
         """Fast partial dependence computation.

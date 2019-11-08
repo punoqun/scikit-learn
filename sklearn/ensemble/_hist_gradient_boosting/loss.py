@@ -50,7 +50,7 @@ class BaseLoss(ABC):
             array is initialized to ``1``. Otherwise, the array is allocated
             without being initialized.
         """
-        shape = (prediction_dim, n_samples)
+        shape = (n_samples, prediction_dim)
         gradients = np.empty(shape=shape, dtype=G_H_DTYPE)
         if self.hessians_are_constant:
             # if the hessians are constant, we consider they are equal to 1.
@@ -123,10 +123,10 @@ class LeastSquares(BaseLoss):
         # return a view.
         raw_predictions = raw_predictions.reshape(-1)
         loss = 0.5 * np.power(y_true - raw_predictions, 2)
-        return loss.mean() if average else loss
+        return np.mean(loss, axis=0) if average else loss
 
     def get_baseline_prediction(self, y_train, prediction_dim):
-        return np.mean(y_train)
+        return np.mean(y_train, axis=0)
 
     @staticmethod
     def inverse_link_function(raw_predictions):
@@ -138,7 +138,15 @@ class LeastSquares(BaseLoss):
         # return a view.
         raw_predictions = raw_predictions.reshape(-1)
         gradients = gradients.reshape(-1)
+        y_true = y_true.reshape(-1)
         _update_gradients_least_squares(gradients, y_true, raw_predictions)
+
+        # n_samples = raw_predictions.shape[0]
+        # for i in range(n_samples):
+        #     # Note: a more correct exp is 2 * (raw_predictions - y_true) but
+        #     # since we use 1 for the constant hessian value (and not 2) this
+        #     # is strictly equivalent for the leaves values.
+        #     gradients[i,:] = raw_predictions[i,:] - y_true[i,:]
 
 
 class BinaryCrossEntropy(BaseLoss):
@@ -190,7 +198,7 @@ class BinaryCrossEntropy(BaseLoss):
     def predict_proba(self, raw_predictions):
         # shape (1, n_samples) --> (n_samples,). reshape(-1) is more likely to
         # return a view.
-        raw_predictions = raw_predictions.reshape(-1)
+        # raw_predictions = raw_predictions.reshape(-1)
         proba = np.empty((raw_predictions.shape[0], 2), dtype=Y_DTYPE)
         proba[:, 1] = expit(raw_predictions)
         proba[:, 0] = 1 - proba[:, 1]

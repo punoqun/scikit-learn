@@ -19,7 +19,7 @@ import pandas as pd
 
 def _predict_from_numeric_data_multi(nodes, X, out):
     for tmp_iter in range(X.shape[0]):
-        out[tmp_iter] = _predict_one_from_numeric_data_multi(nodes, X, tmp_iter)
+        out[tmp_iter,:] = _predict_one_from_numeric_data_multi(nodes, X, tmp_iter)
 
 
 def _predict_one_from_numeric_data_multi(nodes, numeric_data, row):
